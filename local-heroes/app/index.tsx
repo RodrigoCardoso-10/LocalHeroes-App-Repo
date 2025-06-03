@@ -17,7 +17,11 @@ export default function HomeScreen() {
       <Link href="/contact">
         <Text style={{ color: 'blue', marginTop: 20 }}>Contact Us</Text>
       </Link>
-x
+
+      <Link href="/settings" asChild>
+        <Text style={{ color: 'blue', marginTop: 20 }}>Settings</Text>
+      </Link>
+
       <Link href="/jobs/[id]">
         <Text style={{ color: 'blue', marginTop: 20 }}>Go to Job Details (ID 123)</Text>
       </Link>
