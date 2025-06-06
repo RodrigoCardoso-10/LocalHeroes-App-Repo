@@ -1,6 +1,28 @@
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+const jobsData = [
+  {
+    id: '1',
+    time: '10 hrs ago',
+    title: 'Forward Security Director',
+    company: 'Black, Skocdopole and Schultz Co',
+    type: 'Full time',
+    salary: '$40,000-$60,000',
+    location: 'New York, USA',
+  },
+  {
+    id: '2',
+    time: '15 hrs ago',
+    title: 'Regional Creative Facilitator',
+    company: 'Wisozk - Dietrich',
+    type: 'Part time',
+    salary: '$32,000-$39,000',
+    location: 'Los Angeles, USA',
+  },
+  // Add more jobs as needed...
+];
+
 const Header = () => (
     <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
@@ -15,6 +37,15 @@ const Header = () => (
                 <Text style={styles.registerText}>Register</Text>
             </TouchableOpacity>
         </View>
+    </View>
+);
+
+const SectionTitle = () => (
+    <View style={styles.sectionTitleContainer}>
+        <Text style={styles.sectionTitle}>Recent Jobs Available</Text>
+        <Text style={styles.sectionSubtitle}>
+            Actively looking premium & included, aimed local & remote jobs.
+        </Text>
     </View>
 );
 
@@ -128,6 +159,21 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     jobDetails: {
+        fontSize: 14,
+        color: '#666',
+    },
+    sectionTitleContainer: {
+        marginBottom: 20,
+        marginTop: 8,
+        paddingHorizontal: 4,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#222',
+        marginBottom: 4,
+    },
+    sectionSubtitle: {
         fontSize: 14,
         color: '#666',
     },
