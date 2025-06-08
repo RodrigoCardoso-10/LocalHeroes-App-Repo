@@ -23,6 +23,46 @@ const jobsData = [
   // Add more jobs as needed...
 ];
 
+interface Job {
+  id: string;
+  time: string;
+  title: string;
+  company: string;
+  type: string;
+  salary: string;
+  location: string;
+}
+
+const JobCard = ({ job }: { job: Job }) => (
+  <View style={styles.jobCard}>
+    <View style={styles.jobCardHeader}>
+      <Text style={styles.jobTime}>{job.time}</Text>
+      <TouchableOpacity>
+        <Text style={styles.bookmarkIcon}>🔖</Text>
+      </TouchableOpacity>
+    </View>
+    <Text style={styles.jobTitle}>{job.title}</Text>
+    <Text style={styles.companyName}>{job.company}</Text>
+    <View style={styles.jobDetailsContainer}>
+      <View style={styles.jobDetail}>
+        <Text style={styles.jobDetailIcon}>💼</Text>
+        <Text style={styles.jobDetailText}>{job.type}</Text>
+      </View>
+      <View style={styles.jobDetail}>
+        <Text style={styles.jobDetailIcon}>💰</Text>
+        <Text style={styles.jobDetailText}>{job.salary}</Text>
+      </View>
+      <View style={styles.jobDetail}>
+        <Text style={styles.jobDetailIcon}>📍</Text>
+        <Text style={styles.jobDetailText}>{job.location}</Text>
+      </View>
+    </View>
+    <TouchableOpacity style={styles.jobDetailsButton}>
+      <Text style={styles.jobDetailsButtonText}>Job Details</Text>
+    </TouchableOpacity>
+  </View>
+);
+
 const Header = () => (
     <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
@@ -54,6 +94,7 @@ export default function HomePage() {
         <View style={{ flex: 1 }}>
             <Header />
             <ScrollView style={styles.container}>
+                <SectionTitle />
                 {/* Search Bar */}
                 <TextInput
                     style={styles.searchBar}
@@ -68,6 +109,11 @@ export default function HomePage() {
                     </TouchableOpacity>
                     {/*Add more categories as needed */}
                 </ScrollView>
+
+                {/* Job Cards List */}
+                {jobsData.map(job => (
+                    <JobCard key={job.id} job={job} />
+                ))}
             </ScrollView>
         </View>
     );
@@ -149,18 +195,70 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     jobCard: {
-        backgroundColor: '#f9f9f9',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 12,
+        backgroundColor: '#FFFFFF',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    jobCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    jobTime: {
+        color: '#2BB6A3',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    bookmarkIcon: {
+        fontSize: 20,
+        color: '#666',
     },
     jobTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1A1A1A',
+        marginBottom: 4,
     },
-    jobDetails: {
+    companyName: {
         fontSize: 14,
         color: '#666',
+        marginBottom: 12,
+    },
+    jobDetailsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 16,
+    },
+    jobDetail: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    jobDetailIcon: {
+        marginRight: 4,
+        fontSize: 16,
+    },
+    jobDetailText: {
+        fontSize: 14,
+        color: '#666',
+    },
+    jobDetailsButton: {
+        backgroundColor: '#2BB6A3',
+        borderRadius: 8,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    jobDetailsButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
     sectionTitleContainer: {
         marginBottom: 20,
