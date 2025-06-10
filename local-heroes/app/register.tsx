@@ -1,12 +1,22 @@
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { useAuth } from './context/AuthContext';
 
 const RegisterScreen = () => {
   const router = useRouter();
   const { register, isLoading, error, clearError } = useAuth();
-  
+
   // Form state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -17,10 +27,10 @@ const RegisterScreen = () => {
   // Handle registration submission
   const handleRegister = async () => {
     console.log('Register button pressed');
-    
+
     // Reset any previous errors
     clearError();
-    
+
     // Basic validation
     if (!firstName || !lastName || !email || !password) {
       console.log('Validation failed: Missing required fields');
@@ -33,7 +43,7 @@ const RegisterScreen = () => {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
-    
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -41,7 +51,7 @@ const RegisterScreen = () => {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    
+
     // Password validation
     if (password.length < 6) {
       console.log('Validation failed: Password too short');
@@ -51,24 +61,21 @@ const RegisterScreen = () => {
 
     try {
       console.log('All validation passed, starting registration process...');
-      console.log('Registration data:', { firstName, lastName, email, role: 'user' });
-      
+      console.log('Registration data:', { firstName, lastName, email });
+
       await register({
         firstName,
         lastName,
         email,
-        password
+        password,
       });
-      
+
       console.log('Registration successful, navigating to home');
       router.replace('/');
     } catch (err) {
       // Error is handled by the AuthContext, but we can show an alert here too
       console.error('Registration error in component:', err);
-      Alert.alert(
-        'Registration Failed',
-        error || 'Could not create account. Please try again later.'
-      );
+      Alert.alert('Registration Failed', error || 'Could not create account. Please try again later.');
     }
   };
 
@@ -92,21 +99,11 @@ const RegisterScreen = () => {
       </View>
       <ScrollView contentContainerStyle={styles.formContainer}>
         <Text style={styles.title}>Register</Text>
-        
+
         {error && <Text style={styles.errorText}>{error}</Text>}
-        
-        <TextInput
-          style={styles.input}
-          placeholder="First Name"
-          value={firstName}
-          onChangeText={setFirstName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Last Name"
-          value={lastName}
-          onChangeText={setLastName}
-        />
+
+        <TextInput style={styles.input} placeholder="First Name" value={firstName} onChangeText={setFirstName} />
+        <TextInput style={styles.input} placeholder="Last Name" value={lastName} onChangeText={setLastName} />
         <TextInput
           style={styles.input}
           placeholder="Email address"
@@ -129,16 +126,8 @@ const RegisterScreen = () => {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
-        <TouchableOpacity 
-          style={styles.registerSubmitButton}
-          onPress={handleRegister}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.registerButtonText}>Register</Text>
-          )}
+        <TouchableOpacity style={styles.registerSubmitButton} onPress={handleRegister} disabled={isLoading}>
+          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.registerButtonText}>Register</Text>}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

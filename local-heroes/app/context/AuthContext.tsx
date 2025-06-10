@@ -18,13 +18,7 @@ type AuthContextType = {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    role: string;
-  }) => Promise<void>;
+  register: (userData: { firstName: string; lastName: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 };
@@ -46,7 +40,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (userData) {
           // Set the user from storage first for a faster initial load
           setUser(JSON.parse(userData));
-          
+
           // Then verify with the server that the session is still valid
           try {
             const freshUserData = await authService.checkAuth();
@@ -74,10 +68,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // Login to get tokens (stored in cookies)
       await authService.login(email, password);
-      
+
       // After successful login, fetch user data using the auth service
       try {
         const userData = await authService.checkAuth();
@@ -96,30 +90,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Register function
-  const register = async (userData: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-  }) => {
+  const register = async (userData: { firstName: string; lastName: string; email: string; password: string }) => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       console.log('Starting registration process for:', userData.email);
-      
+
       // Register the user
       await authService.register(userData);
       console.log('Registration successful, proceeding to login');
-      
+
       // Add a small delay before login attempt to ensure backend has processed the registration
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // After registration, log the user in
       await login(userData.email, userData.password);
     } catch (err: any) {
       console.error('Registration error in AuthContext:', err);
-      
+
       // Handle different types of error objects
       if (err && typeof err === 'object') {
         if (err.message) {
@@ -132,7 +121,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         setError('Registration failed. Please try again.');
       }
-      
+
       throw err;
     } finally {
       setIsLoading(false);
