@@ -101,8 +101,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await authService.register(userData);
       console.log('Registration successful, proceeding to login');
 
-      // Add a small delay before login attempt to ensure backend has processed the registration
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Add a longer delay before login attempt to ensure backend has processed the registration
+      console.log('Waiting for backend to process registration before login attempt...');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // After registration, log the user in
       await login(userData.email, userData.password);
@@ -172,3 +173,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export default AuthContext;

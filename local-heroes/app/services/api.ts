@@ -46,9 +46,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Try to refresh the token
+        // Try to refresh the token - use the same baseURL as the main API instance
+        console.log('Attempting to refresh token at:', `${baseURL}/auth/refresh`);
         const refreshResponse = await axios.post(
-          'http://127.0.0.1:3001/auth/refresh',
+          `${baseURL}/auth/refresh`,
           {},
           {
             withCredentials: true,
@@ -82,17 +83,44 @@ export const authService = {
   // Login user
   login: async (email: string, password: string) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
-
+      console.log('API Service - Login attempt for:', email);
+      console.log('API Service - Making login request to:', `${api.defaults.baseURL}/auth/login`);
+      
+      // Add a timeout to the request to avoid hanging indefinitely
+      const response = await api.post('/auth/login', { email, password }, { timeout: 10000 });
+      
+      console.log('API Service - Login successful, processing response');
+      
       // Store the access token in SecureStore for use in the Authorization header
       if (response.data && response.data.accessToken) {
         await SecureStore.setItemAsync('accessToken', response.data.accessToken);
+        console.log('API Service - Access token stored successfully');
+      } else {
+        console.log('API Service - No access token in response');
       }
 
       return response.data;
     } catch (error: any) {
-      console.error('Login error details:', error);
-      throw error.response?.data || { message: 'Login failed' };
+      console.error('API Service - Login error:');
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx range
+        console.error('API Service - Server responded with error:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+        throw error.response.data || { message: `Server error: ${error.response.status}` };
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('API Service - No response received:', error.request);
+        throw { message: 'No response from server. Please check your connection and try again.' };
+      } else {
+        // Something happened in setting up the request
+        console.error('API Service - Request setup error:', error.message);
+        throw { message: `Request failed: ${error.message}` };
+      }
     }
   },
 
