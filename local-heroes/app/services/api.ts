@@ -83,23 +83,27 @@ export const authService = {
   // Login user with retry capability
   login: async (email: string, password: string, retryAttempts = 2, initialBackoff = 1000) => {
     let lastError;
-    
+
     for (let attempt = 0; attempt <= retryAttempts; attempt++) {
       try {
         console.log(`API Service - Login attempt ${attempt + 1}/${retryAttempts + 1} for:`, email);
         console.log('API Service - Making login request to:', `${api.defaults.baseURL}/auth/login`);
-        
+
         // Add a timeout to the request to avoid hanging indefinitely
-        const response = await api.post('/auth/login', { email, password }, { 
-          timeout: 15000, // Increased timeout
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+        const response = await api.post(
+          '/auth/login',
+          { email, password },
+          {
+            timeout: 15000, // Increased timeout
+            headers: {
+              'Cache-Control': 'no-cache',
+              Pragma: 'no-cache',
+            },
           }
-        });
-        
+        );
+
         console.log('API Service - Login successful, processing response');
-        
+
         // Store the access token in SecureStore for use in the Authorization header
         if (response.data && response.data.accessToken) {
           await SecureStore.setItemAsync('accessToken', response.data.accessToken);
@@ -107,34 +111,34 @@ export const authService = {
         } else {
           console.log('API Service - No access token in response, but request succeeded');
         }
-        
+
         return response.data;
       } catch (error: any) {
         lastError = error;
         console.error(`API Service - Login attempt ${attempt + 1} failed:`);
-        
+
         if (error.response) {
           console.error('API Service - Server responded with error:', {
             status: error.response.status,
             statusText: error.response.statusText,
             data: error.response.data,
-            headers: error.response.headers
+            headers: error.response.headers,
           });
         } else if (error.request) {
           console.error('API Service - No response received:', error.request);
         } else {
           console.error('API Service - Request setup error:', error.message);
         }
-        
+
         // If this is not the last attempt, wait before retrying
         if (attempt < retryAttempts) {
           const backoffTime = initialBackoff * Math.pow(2, attempt);
           console.log(`API Service - Retrying in ${backoffTime}ms...`);
-          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          await new Promise((resolve) => setTimeout(resolve, backoffTime));
         }
       }
     }
-    
+
     // If we've exhausted all retry attempts, throw the last error
     if (lastError?.response?.data) {
       throw lastError.response.data;
@@ -181,7 +185,6 @@ export const authService = {
       }
     }
   },
-  },
 
   // Logout user
   logout: async () => {
@@ -222,7 +225,6 @@ export const authService = {
       throw error.response?.data || { message: 'Password reset failed' };
     }
   },
-
   // Check if user is authenticated
   checkAuth: async () => {
     try {
@@ -230,6 +232,22 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Authentication check failed' };
+    }
+  },
+
+  // Update user profile
+  updateProfile: async (profileData: {
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    address?: string;
+    bio?: string;
+  }) => {
+    try {
+      const response = await api.put('/users/profile', profileData);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Profile update failed' };
     }
   },
 };

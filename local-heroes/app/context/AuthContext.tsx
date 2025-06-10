@@ -10,6 +10,12 @@ type User = {
   firstName: string;
   lastName: string;
   role: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  emailVerifiedAt?: string | null;
 };
 
 // Define context type
@@ -20,6 +26,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: { firstName: string; lastName: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
   clearError: () => void;
 };
 
@@ -137,7 +144,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
   };
-
   // Logout function
   const logout = async () => {
     try {
@@ -151,12 +157,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
   };
+  // Update user function
+  const updateUser = async (userData: Partial<User>) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Update profile on server with only the allowed fields
+      const profileData = {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+        address: userData.address,
+        bio: userData.bio,
+      };
+
+      // Filter out undefined values
+      const filteredData = Object.fromEntries(Object.entries(profileData).filter(([_, value]) => value !== undefined));
+
+      const updatedUser = await authService.updateProfile(filteredData);
+
+      // Update local state
+      setUser(updatedUser);
+      await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Clear error
   const clearError = () => {
     setError(null);
   };
-
   return (
     <AuthContext.Provider
       value={{
@@ -166,6 +201,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         register,
         logout,
+        updateUser,
         clearError,
       }}
     >

@@ -28,18 +28,20 @@ const HomePage = () => {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeText}>Welcome, {user?.firstName || 'User'}!</Text>
             <Text style={styles.subtitle}>You are now connected to the server.</Text>
           </View>
-          
+
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Your Profile</Text>
             <View style={styles.profileInfo}>
               <Text style={styles.infoLabel}>Name:</Text>
-              <Text style={styles.infoValue}>{user?.firstName} {user?.lastName}</Text>
+              <Text style={styles.infoValue}>
+                {user?.firstName} {user?.lastName}
+              </Text>
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.infoLabel}>Email:</Text>
@@ -50,9 +52,15 @@ const HomePage = () => {
               <Text style={styles.infoValue}>{user?.role || 'User'}</Text>
             </View>
           </View>
-          
           <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)')}>
             <Text style={styles.actionButtonText}>Explore App</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.settingsButton]}
+            onPress={() => router.push('/settings')}
+          >
+            <Text style={styles.actionButtonText}>Settings</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -136,6 +144,9 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     marginTop: 10,
+  },
+  settingsButton: {
+    backgroundColor: '#34495e',
   },
   actionButtonText: {
     color: '#FFFFFF',
