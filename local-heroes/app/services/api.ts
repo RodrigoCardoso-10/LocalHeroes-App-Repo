@@ -1,0 +1,171 @@
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+// Create an axios instance with default configuration
+const api = axios.create({
+  // Use 10.0.2.2 which points to the host machine's localhost from Android emulator
+  baseURL: 'http://10.0.2.2:3000', // Special IP for Android emulator to access host machine
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Important for handling cookies (JWT tokens)
+});
+
+// Add a request interceptor to add the token to requests
+api.interceptors.request.use(
+  async (config) => {
+    try {
+      // Get token from secure storage
+      const token = await SecureStore.getItemAsync('accessToken');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Error adding auth token to request:', error);
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add a response interceptor for handling token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    
+    // If the error is 401 (Unauthorized) and we haven't already tried to refresh the token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        // Try to refresh the token
+        const refreshResponse = await axios.post('http://10.0.2.2:3000/auth/refresh', {}, {
+          withCredentials: true
+        });
+        
+        // Store the new access token in SecureStore
+        if (refreshResponse.data && refreshResponse.data.accessToken) {
+          await SecureStore.setItemAsync('accessToken', refreshResponse.data.accessToken);
+        }
+        
+        // If refresh successful, retry the original request
+        return api(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, redirect to login (handled by the auth context)
+        console.error('Token refresh failed:', refreshError);
+        // Clear the stored token on refresh failure
+        await SecureStore.deleteItemAsync('accessToken').catch(err => 
+          console.error('Error clearing access token:', err)
+        );
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// Authentication services
+export const authService = {
+  // Login user
+  login: async (email: string, password: string) => {
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      
+      // Store the access token in SecureStore for use in the Authorization header
+      if (response.data && response.data.accessToken) {
+        await SecureStore.setItemAsync('accessToken', response.data.accessToken);
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Login error details:', error);
+      throw error.response?.data || { message: 'Login failed' };
+    }
+  },
+
+  // Register user
+  register: async (userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    role: string;
+  }) => {
+    try {
+      console.log('API Service - Registering user:', userData.email, 'with role:', userData.role);
+      
+      // Log the full request payload for debugging
+      console.log('API Service - Registration payload:', JSON.stringify(userData));
+      
+      const response = await api.post('/users', userData);
+      console.log('API Service - Registration successful:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API Service - Registration error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      // Throw a more descriptive error
+      throw error.response?.data || { 
+        message: `Registration failed: ${error.message || 'Unknown error'}` 
+      };
+    }
+  },
+
+  // Logout user
+  logout: async () => {
+    try {
+      const response = await api.delete('/auth/logout');
+      
+      // Clear the stored access token
+      await SecureStore.deleteItemAsync('accessToken');
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Logout error details:', error);
+      // Still try to clear the token even if the server request fails
+      await SecureStore.deleteItemAsync('accessToken').catch(err => 
+        console.error('Error clearing access token:', err)
+      );
+      
+      throw error.response?.data || { message: 'Logout failed' };
+    }
+  },
+
+  // Request password reset
+  requestPasswordReset: async (email: string) => {
+    try {
+      const response = await api.post('/auth/password-reset', { email });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Password reset request failed' };
+    }
+  },
+
+  // Reset password with token
+  resetPassword: async (token: string, password: string) => {
+    try {
+      const response = await api.post('/auth/reset-password', { token, password });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Password reset failed' };
+    }
+  },
+  
+  // Check if user is authenticated
+  checkAuth: async () => {
+    try {
+      const response = await api.get('/users/userdata');
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Authentication check failed' };
+    }
+  },
+};
+
+export default api;
