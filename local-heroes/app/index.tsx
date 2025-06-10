@@ -1,5 +1,5 @@
-import { View, Text } from 'react-native';
 import { Link } from 'expo-router';
+import { Text, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
@@ -17,9 +17,13 @@ export default function HomeScreen() {
       <Link href="/contact">
         <Text style={{ color: 'blue', marginTop: 20 }}>Contact Us</Text>
       </Link>
-x
+
       <Link href="/jobs/[id]">
         <Text style={{ color: 'blue', marginTop: 20 }}>Go to Job Details (ID 123)</Text>
+      </Link>
+
+      <Link href="/sign-up">
+        <Text style={{ color: 'blue', marginTop: 20 }}>Register</Text>
       </Link>
     </View>
   );
