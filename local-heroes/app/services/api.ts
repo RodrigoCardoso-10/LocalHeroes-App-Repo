@@ -91,29 +91,42 @@ export const authService = {
     lastName: string;
     email: string;
     password: string;
-    role: string;
   }) => {
     try {
-      console.log('API Service - Registering user:', userData.email, 'with role:', userData.role);
+      console.log('API Service - Registering user:', userData.email);
       
-      // Log the full request payload for debugging
-      console.log('API Service - Registration payload:', JSON.stringify(userData));
+      // Log the full request payload for debugging (excluding password for security)
+      const safeUserData = { ...userData } as Partial<typeof userData>;
+      delete safeUserData.password;
+      console.log('API Service - Registration payload:', JSON.stringify(safeUserData));
+      console.log('API Service - Making request to:', `${api.defaults.baseURL}/users`);
       
-      const response = await api.post('/users', userData);
+      // Add a timeout to the request to avoid hanging indefinitely
+      const response = await api.post('/users', userData, { timeout: 10000 });
+      
       console.log('API Service - Registration successful:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('API Service - Registration error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message
-      });
+      console.error('API Service - Registration error:');
       
-      // Throw a more descriptive error
-      throw error.response?.data || { 
-        message: `Registration failed: ${error.message || 'Unknown error'}` 
-      };
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx range
+        console.error('API Service - Server responded with error:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+        throw error.response.data || { message: `Server error: ${error.response.status}` };
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('API Service - No response received:', error.request);
+        throw { message: 'No response from server. Please check your connection and try again.' };
+      } else {
+        // Something happened in setting up the request
+        console.error('API Service - Request setup error:', error.message);
+        throw { message: `Request failed: ${error.message}` };
+      }
     }
   },
 

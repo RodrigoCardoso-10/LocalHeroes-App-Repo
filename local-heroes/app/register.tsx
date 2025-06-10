@@ -16,16 +16,20 @@ const RegisterScreen = () => {
 
   // Handle registration submission
   const handleRegister = async () => {
+    console.log('Register button pressed');
+    
     // Reset any previous errors
     clearError();
     
     // Basic validation
     if (!firstName || !lastName || !email || !password) {
+      console.log('Validation failed: Missing required fields');
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
     if (password !== confirmPassword) {
+      console.log('Validation failed: Passwords do not match');
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
@@ -33,25 +37,29 @@ const RegisterScreen = () => {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      console.log('Validation failed: Invalid email format');
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
     
     // Password validation
     if (password.length < 6) {
+      console.log('Validation failed: Password too short');
       Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
     }
 
     try {
-      console.log('Starting registration process...');
+      console.log('All validation passed, starting registration process...');
+      console.log('Registration data:', { firstName, lastName, email, role: 'user' });
+      
       await register({
         firstName,
         lastName,
         email,
-        password,
-        role: 'user' // Explicitly set the role
+        password
       });
+      
       console.log('Registration successful, navigating to home');
       router.replace('/');
     } catch (err) {

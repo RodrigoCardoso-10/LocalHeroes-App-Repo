@@ -101,7 +101,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     lastName: string;
     email: string;
     password: string;
-    role: string;
   }) => {
     try {
       setIsLoading(true);
