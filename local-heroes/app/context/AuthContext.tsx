@@ -101,12 +101,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await authService.register(userData);
       console.log('Registration successful, proceeding to login');
 
-      // Add a longer delay before login attempt to ensure backend has processed the registration
+      // Add a much longer delay before login attempt to ensure backend has processed the registration
       console.log('Waiting for backend to process registration before login attempt...');
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
-      // After registration, log the user in
-      await login(userData.email, userData.password);
+      // After registration, try to log the user in with retry mechanism
+      try {
+        console.log('Attempting login after registration');
+        await login(userData.email, userData.password);
+      } catch (loginError) {
+        console.log('First login attempt failed, waiting additional time before retry');
+        // If first login fails, wait a bit more and try again
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        console.log('Retrying login after registration');
+        await login(userData.email, userData.password);
+      }
     } catch (err: any) {
       console.error('Registration error in AuthContext:', err);
 

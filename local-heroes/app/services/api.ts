@@ -80,47 +80,68 @@ api.interceptors.response.use(
 
 // Authentication services
 export const authService = {
-  // Login user
-  login: async (email: string, password: string) => {
-    try {
-      console.log('API Service - Login attempt for:', email);
-      console.log('API Service - Making login request to:', `${api.defaults.baseURL}/auth/login`);
-      
-      // Add a timeout to the request to avoid hanging indefinitely
-      const response = await api.post('/auth/login', { email, password }, { timeout: 10000 });
-      
-      console.log('API Service - Login successful, processing response');
-      
-      // Store the access token in SecureStore for use in the Authorization header
-      if (response.data && response.data.accessToken) {
-        await SecureStore.setItemAsync('accessToken', response.data.accessToken);
-        console.log('API Service - Access token stored successfully');
-      } else {
-        console.log('API Service - No access token in response');
-      }
-
-      return response.data;
-    } catch (error: any) {
-      console.error('API Service - Login error:');
-      
-      if (error.response) {
-        // The request was made and the server responded with a status code outside of 2xx range
-        console.error('API Service - Server responded with error:', {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          headers: error.response.headers
+  // Login user with retry capability
+  login: async (email: string, password: string, retryAttempts = 2, initialBackoff = 1000) => {
+    let lastError;
+    
+    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+      try {
+        console.log(`API Service - Login attempt ${attempt + 1}/${retryAttempts + 1} for:`, email);
+        console.log('API Service - Making login request to:', `${api.defaults.baseURL}/auth/login`);
+        
+        // Add a timeout to the request to avoid hanging indefinitely
+        const response = await api.post('/auth/login', { email, password }, { 
+          timeout: 15000, // Increased timeout
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
         });
-        throw error.response.data || { message: `Server error: ${error.response.status}` };
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('API Service - No response received:', error.request);
-        throw { message: 'No response from server. Please check your connection and try again.' };
-      } else {
-        // Something happened in setting up the request
-        console.error('API Service - Request setup error:', error.message);
-        throw { message: `Request failed: ${error.message}` };
+        
+        console.log('API Service - Login successful, processing response');
+        
+        // Store the access token in SecureStore for use in the Authorization header
+        if (response.data && response.data.accessToken) {
+          await SecureStore.setItemAsync('accessToken', response.data.accessToken);
+          console.log('API Service - Access token stored successfully');
+        } else {
+          console.log('API Service - No access token in response, but request succeeded');
+        }
+        
+        return response.data;
+      } catch (error: any) {
+        lastError = error;
+        console.error(`API Service - Login attempt ${attempt + 1} failed:`);
+        
+        if (error.response) {
+          console.error('API Service - Server responded with error:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            headers: error.response.headers
+          });
+        } else if (error.request) {
+          console.error('API Service - No response received:', error.request);
+        } else {
+          console.error('API Service - Request setup error:', error.message);
+        }
+        
+        // If this is not the last attempt, wait before retrying
+        if (attempt < retryAttempts) {
+          const backoffTime = initialBackoff * Math.pow(2, attempt);
+          console.log(`API Service - Retrying in ${backoffTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+        }
       }
+    }
+    
+    // If we've exhausted all retry attempts, throw the last error
+    if (lastError?.response?.data) {
+      throw lastError.response.data;
+    } else if (lastError) {
+      throw { message: lastError.message || 'Login failed after multiple attempts' };
+    } else {
+      throw { message: 'Login failed after multiple attempts' };
     }
   },
 
@@ -159,6 +180,7 @@ export const authService = {
         throw { message: `Request failed: ${error.message}` };
       }
     }
+  },
   },
 
   // Logout user
