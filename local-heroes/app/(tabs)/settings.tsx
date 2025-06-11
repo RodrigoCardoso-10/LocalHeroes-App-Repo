@@ -1,14 +1,8 @@
-import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-<<<<<<< HEAD:local-heroes/app/(tabs)/settings.tsx
-import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-=======
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
-import { Link, router } from 'expo-router';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { useAuth } from './context/AuthContext';
->>>>>>> 92ecb3b5851793d24e43816053a09bc45c964439:local-heroes/app/settings.tsx
+import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext'; // Adjusted path for AuthContext
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
@@ -72,7 +66,6 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -82,12 +75,12 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.settingsIcon}>
           <Ionicons name="settings-outline" size={24} color="white" />
         </TouchableOpacity>
-      </View>
-
+      </View>{' '}
       {/* Settings Items */}
       <View style={styles.content}>
+        {' '}
         {/* Edit Profile Button - Direct navigation to profile page */}
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile' as any)}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.navigate('/profile' as any)}>
           <View style={styles.iconContainer}>
             <Ionicons name="person-outline" size={24} color="#0ca678" />
           </View>
@@ -97,7 +90,6 @@ export default function SettingsScreen() {
           </View>
           <Ionicons name="chevron-forward" size={24} color="#ccc" />
         </TouchableOpacity>
-
         {/* Other menu items */}
         {menuItems.slice(1).map((item) => (
           <TouchableOpacity style={styles.menuItem} key={item.id}>
@@ -119,7 +111,6 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </View>
-
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
