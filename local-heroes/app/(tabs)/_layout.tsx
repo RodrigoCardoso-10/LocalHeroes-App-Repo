@@ -5,7 +5,7 @@ import CustomTabBar from '../components/CustomTabBar';
 export default function TabLayout() {
   return (
     <Tabs
-      tabBar={props => <CustomTabBar {...props} />}
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
       }}
@@ -14,7 +14,7 @@ export default function TabLayout() {
       <Tabs.Screen name="jobs" options={{}} />
       <Tabs.Screen name="post" options={{}} />
       <Tabs.Screen name="inbox" options={{}} />
-      <Tabs.Screen name="profile" options={{}} />
+      <Tabs.Screen name="settings" options={{}} />
     </Tabs>
   );
 }
