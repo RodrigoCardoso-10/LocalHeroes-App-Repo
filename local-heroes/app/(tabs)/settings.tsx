@@ -1,8 +1,14 @@
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React from 'react';
+<<<<<<< HEAD:local-heroes/app/(tabs)/settings.tsx
+import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+=======
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useAuth } from './context/AuthContext';
+>>>>>>> 92ecb3b5851793d24e43816053a09bc45c964439:local-heroes/app/settings.tsx
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
