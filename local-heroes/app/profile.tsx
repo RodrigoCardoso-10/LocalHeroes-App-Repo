@@ -1,34 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
   StatusBar,
   TextInput,
   ScrollView,
   Image,
   Alert,
   Platform,
-  ActionSheetIOS
+  ActionSheetIOS,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from './context/AuthContext';
+import { authService } from './services/api';
 
 export default function EditProfileScreen() {
+  const { user, updateUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const [profileData, setProfileData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main Street, Anytown, USA',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
     skills: ['Plumbing', 'Electrical', 'Carpentry'],
-    bio: 'Professional handyman with over 10 years of experience in residential and commercial repairs.',
-    profileImage: 'https://randomuser.me/api/portraits/men/32.jpg'
+    bio: '',
+    profileImage: 'https://randomuser.me/api/portraits/men/32.jpg',
   });
-  
+  // Load user data on mount
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        skills: ['Plumbing', 'Electrical', 'Carpentry'],
+        bio: user.bio || '',
+        profileImage: 'https://randomuser.me/api/portraits/men/32.jpg',
+      });
+    }
+  }, [user]);
+
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'web') {
@@ -37,7 +57,7 @@ export default function EditProfileScreen() {
         if (mediaLibraryStatus !== 'granted') {
           Alert.alert('Permission Needed', 'Media library permission is needed to select photos');
         }
-        
+
         // Request camera permissions
         const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
         if (cameraStatus !== 'granted') {
@@ -52,7 +72,7 @@ export default function EditProfileScreen() {
   const handleInputChange = (field: string, value: string) => {
     setProfileData({
       ...profileData,
-      [field]: value
+      [field]: value,
     });
   };
 
@@ -60,7 +80,7 @@ export default function EditProfileScreen() {
     if (newSkill.trim() !== '') {
       setProfileData({
         ...profileData,
-        skills: [...profileData.skills, newSkill.trim()]
+        skills: [...profileData.skills, newSkill.trim()],
       });
       setNewSkill('');
     }
@@ -71,7 +91,7 @@ export default function EditProfileScreen() {
     updatedSkills.splice(index, 1);
     setProfileData({
       ...profileData,
-      skills: updatedSkills
+      skills: updatedSkills,
     });
   };
 
@@ -83,11 +103,11 @@ export default function EditProfileScreen() {
         aspect: [1, 1],
         quality: 0.7,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setProfileData({
           ...profileData,
-          profileImage: result.assets[0].uri
+          profileImage: result.assets[0].uri,
         });
       }
     } catch (error) {
@@ -95,7 +115,7 @@ export default function EditProfileScreen() {
       Alert.alert('Error', 'There was a problem taking the photo');
     }
   };
-  
+
   const pickImageFromGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -104,11 +124,11 @@ export default function EditProfileScreen() {
         aspect: [1, 1],
         quality: 0.7,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setProfileData({
           ...profileData,
-          profileImage: result.assets[0].uri
+          profileImage: result.assets[0].uri,
         });
       }
     } catch (error) {
@@ -116,7 +136,7 @@ export default function EditProfileScreen() {
       Alert.alert('Error', 'There was a problem selecting the image');
     }
   };
-  
+
   const showImageOptions = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -133,60 +153,75 @@ export default function EditProfileScreen() {
         }
       );
     } else {
-      Alert.alert(
-        'Change Profile Picture',
-        'Choose an option',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Take Photo', onPress: takePhotoWithCamera },
-          { text: 'Choose from Library', onPress: pickImageFromGallery },
-        ]
-      );
+      Alert.alert('Change Profile Picture', 'Choose an option', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take Photo', onPress: takePhotoWithCamera },
+        { text: 'Choose from Library', onPress: pickImageFromGallery },
+      ]);
     }
   };
+  const handleSave = async () => {
+    if (!user) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
 
-  const handleSave = () => {
-    // Save profile data logic would go here
-    Alert.alert(
-      'Profile Updated', 
-      'Your profile has been successfully updated!',
-      [
-        { text: 'OK', onPress: () => router.back() }
-      ]
-    );
+    try {
+      setIsLoading(true);
+
+      // Update profile using auth context
+      await updateUser({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+        address: profileData.address,
+        bio: profileData.bio,
+      });
+
+      Alert.alert('Profile Updated', 'Your profile has been successfully updated!', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      Alert.alert('Update Failed', error.message || 'Failed to update profile. Please try again.', [{ text: 'OK' }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Header */}
       <View style={styles.header}>
+        {' '}
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save</Text>
+        <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={isLoading}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#0ca678" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save</Text>
+          )}
         </TouchableOpacity>
       </View>
-      
+
       <ScrollView style={styles.content}>
         {/* Profile Picture */}
         <View style={styles.profilePictureContainer}>
-          <Image 
-            source={{ uri: profileData.profileImage }} 
-            style={styles.profilePicture} 
-          />
+          <Image source={{ uri: profileData.profileImage }} style={styles.profilePicture} />
           <TouchableOpacity style={styles.editPictureButton} onPress={showImageOptions}>
             <Ionicons name="camera" size={20} color="white" />
           </TouchableOpacity>
         </View>
-        
+
         {/* Form Fields */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>First Name</Text>
             <TextInput
@@ -196,7 +231,7 @@ export default function EditProfileScreen() {
               placeholder="Enter your first name"
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Last Name</Text>
             <TextInput
@@ -206,7 +241,7 @@ export default function EditProfileScreen() {
               placeholder="Enter your last name"
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
@@ -217,7 +252,7 @@ export default function EditProfileScreen() {
               keyboardType="email-address"
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Phone</Text>
             <TextInput
@@ -228,7 +263,7 @@ export default function EditProfileScreen() {
               keyboardType="phone-pad"
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Address</Text>
             <TextInput
@@ -240,11 +275,11 @@ export default function EditProfileScreen() {
             />
           </View>
         </View>
-        
+
         {/* Skills Section */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Skills</Text>
-          
+
           <View style={styles.skillsContainer}>
             {profileData.skills.map((skill, index) => (
               <View key={index} style={styles.skillTag}>
@@ -255,7 +290,7 @@ export default function EditProfileScreen() {
               </View>
             ))}
           </View>
-          
+
           <View style={styles.addSkillContainer}>
             <TextInput
               style={styles.skillInput}
@@ -268,7 +303,7 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {/* Bio Section */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Bio</Text>
@@ -281,7 +316,7 @@ export default function EditProfileScreen() {
             numberOfLines={4}
           />
         </View>
-        
+
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
