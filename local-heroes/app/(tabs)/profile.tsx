@@ -1,10 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import Header from '../components/Header';
 
 export default function ProfileScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Profile Screen</Text>
+      <Header showAuthButtons={false} />
+      <ScrollView style={styles.scrollView}>
+        <Text style={styles.text}>Profile Screen</Text>
+      </ScrollView>
     </View>
   );
 }
@@ -12,9 +16,11 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+    padding: 16,
   },
   text: {
     fontSize: 20,
