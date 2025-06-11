@@ -1,12 +1,10 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { router, Redirect } from 'expo-router';
 
 export default function PostScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Post a Job Screen</Text>
-    </View>
-  );
+  // Redirect to the post-job page
+  return <Redirect href="/post-job" />;
 }
 
 const styles = StyleSheet.create({
