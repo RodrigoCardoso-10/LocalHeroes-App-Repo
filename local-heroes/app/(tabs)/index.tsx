@@ -1,6 +1,22 @@
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 
+function HomeScreen() {
+    const { user } = useAuth();
+  
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Welcome to LocalHeroes</Text>
+        {user && (
+          <Text style={styles.subtitle}>
+            Hello, {user.firstName} {user.lastName}
+          </Text>
+        )}
+      </View>
+    );
+  }
+  
 const jobsData = [
   {
     id: '1',

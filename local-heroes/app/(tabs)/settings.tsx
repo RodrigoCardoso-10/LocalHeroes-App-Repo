@@ -1,9 +1,36 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
+<<<<<<< HEAD:local-heroes/app/(tabs)/settings.tsx
 import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+=======
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useAuth } from './context/AuthContext';
+>>>>>>> 92ecb3b5851793d24e43816053a09bc45c964439:local-heroes/app/settings.tsx
 
 export default function SettingsScreen() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            router.replace('/login');
+          } catch (error) {
+            console.error('Logout error:', error);
+            Alert.alert('Error', 'Failed to logout. Please try again.');
+          }
+        },
+      },
+    ]);
+  };
   const menuItems = [
     {
       id: 'profile',
@@ -45,7 +72,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -56,14 +83,11 @@ export default function SettingsScreen() {
           <Ionicons name="settings-outline" size={24} color="white" />
         </TouchableOpacity>
       </View>
-      
+
       {/* Settings Items */}
       <View style={styles.content}>
         {/* Edit Profile Button - Direct navigation to profile page */}
-        <TouchableOpacity 
-          style={styles.menuItem} 
-          onPress={() => router.push('/profile' as any)}
-        >
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile' as any)}>
           <View style={styles.iconContainer}>
             <Ionicons name="person-outline" size={24} color="#0ca678" />
           </View>
@@ -73,13 +97,11 @@ export default function SettingsScreen() {
           </View>
           <Ionicons name="chevron-forward" size={24} color="#ccc" />
         </TouchableOpacity>
-        
+
         {/* Other menu items */}
         {menuItems.slice(1).map((item) => (
           <TouchableOpacity style={styles.menuItem} key={item.id}>
-            <View style={styles.iconContainer}>
-              {item.icon}
-            </View>
+            <View style={styles.iconContainer}>{item.icon}</View>
             <View style={styles.menuItemText}>
               <Text style={styles.menuItemTitle}>{item.title}</Text>
               <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
@@ -87,9 +109,8 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
         ))}
-        
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <View style={styles.iconContainer}>
             <Ionicons name="log-out-outline" size={24} color="#e03131" />
           </View>
@@ -98,7 +119,7 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </View>
-      
+
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
@@ -114,10 +135,10 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <MaterialIcons name="mail-outline" size={24} color="#999" />
-        </TouchableOpacity>
+        </TouchableOpacity>{' '}
         <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
           <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>You</Text>
+            <Text style={styles.profileText}>{user?.firstName?.charAt(0)?.toUpperCase() || 'U'}</Text>
           </View>
         </TouchableOpacity>
       </View>
