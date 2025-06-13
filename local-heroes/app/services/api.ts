@@ -234,7 +234,6 @@ export const authService = {
       throw error.response?.data || { message: 'Authentication check failed' };
     }
   },
-
   // Update user profile
   updateProfile: async (profileData: {
     firstName: string;
@@ -248,6 +247,133 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Profile update failed' };
+    }
+  },
+
+  // Tasks/Jobs API methods
+  // Get all tasks with filtering
+  getTasks: async (filters?: {
+    search?: string;
+    location?: string;
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    status?: string;
+    datePosted?: string;
+    tags?: string[];
+    page?: number;
+    limit?: number;
+  }) => {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            if (Array.isArray(value)) {
+              params.append(key, value.join(','));
+            } else {
+              params.append(key, String(value));
+            }
+          }
+        });
+      }
+
+      const response = await api.get(`/tasks?${params.toString()}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch tasks' };
+    }
+  },
+
+  // Get single task by ID
+  getTask: async (id: string) => {
+    try {
+      const response = await api.get(`/tasks/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch task' };
+    }
+  },
+
+  // Create new task
+  createTask: async (taskData: {
+    title: string;
+    description: string;
+    location?: string;
+    price: number;
+    dueDate?: string;
+    category?: string;
+    tags?: string[];
+    experienceLevel?: string;
+  }) => {
+    try {
+      const response = await api.post('/tasks', taskData);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to create task' };
+    }
+  },
+
+  // Update task
+  updateTask: async (
+    id: string,
+    taskData: {
+      title?: string;
+      description?: string;
+      location?: string;
+      price?: number;
+      dueDate?: string;
+      category?: string;
+      tags?: string[];
+      experienceLevel?: string;
+    }
+  ) => {
+    try {
+      const response = await api.patch(`/tasks/${id}`, taskData);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to update task' };
+    }
+  },
+
+  // Delete task
+  deleteTask: async (id: string) => {
+    try {
+      const response = await api.delete(`/tasks/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to delete task' };
+    }
+  },
+
+  // Accept task
+  acceptTask: async (id: string) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/accept`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to accept task' };
+    }
+  },
+
+  // Complete task
+  completeTask: async (id: string) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/complete`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to complete task' };
+    }
+  },
+
+  // Cancel task
+  cancelTask: async (id: string) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/cancel`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to cancel task' };
     }
   },
 };

@@ -1,12 +1,36 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, Pressable, Modal, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Pressable,
+  Modal,
+  SafeAreaView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Header from '../components/Header';
 import Slider from '@react-native-community/slider';
+import { authService } from '../services/api';
+import { Task, TaskFilters, TasksResponse } from '../types/task';
 
 // Custom Checkbox component
-const CustomCheckbox = ({ checked, onPress, label, count }: { checked: boolean, onPress: () => void, label: string, count: number }) => {
+const CustomCheckbox = ({
+  checked,
+  onPress,
+  label,
+  count,
+}: {
+  checked: boolean;
+  onPress: () => void;
+  label: string;
+  count: number;
+}) => {
   return (
     <View style={styles.checkboxRow}>
       <TouchableOpacity onPress={onPress} style={styles.checkboxContainer}>
@@ -32,7 +56,14 @@ export default function JobsScreen() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
-  
+
+  // Backend integration state
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   // Dutch cities list
   const dutchCities = [
     'Amsterdam',
@@ -71,19 +102,11 @@ export default function JobsScreen() {
     { name: 'Last 30 Days', count: 10 },
   ];
 
-  const tags = [
-    'engineering',
-    'design',
-    'marketing',
-    'ui/ux',
-    'management',
-    'software',
-    'construction',
-  ];
+  const tags = ['engineering', 'design', 'marketing', 'ui/ux', 'management', 'software', 'construction'];
 
   const toggleCategory = (category: string): void => {
     if (selectedCategories.includes(category)) {
-      setSelectedCategories(selectedCategories.filter(item => item !== category));
+      setSelectedCategories(selectedCategories.filter((item) => item !== category));
     } else {
       setSelectedCategories([...selectedCategories, category]);
     }
@@ -91,7 +114,7 @@ export default function JobsScreen() {
 
   const toggleExperience = (experience: string): void => {
     if (selectedExperience.includes(experience)) {
-      setSelectedExperience(selectedExperience.filter(item => item !== experience));
+      setSelectedExperience(selectedExperience.filter((item) => item !== experience));
     } else {
       setSelectedExperience([...selectedExperience, experience]);
     }
@@ -99,7 +122,7 @@ export default function JobsScreen() {
 
   const toggleDatePosted = (date: string): void => {
     if (selectedDatePosted.includes(date)) {
-      setSelectedDatePosted(selectedDatePosted.filter(item => item !== date));
+      setSelectedDatePosted(selectedDatePosted.filter((item) => item !== date));
     } else {
       setSelectedDatePosted([...selectedDatePosted, date]);
     }
@@ -107,18 +130,123 @@ export default function JobsScreen() {
 
   const toggleTag = (tag: string): void => {
     if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(item => item !== tag));
+      setSelectedTags(selectedTags.filter((item) => item !== tag));
     } else {
       setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  // Load tasks from backend
+  const loadTasks = async (page: number = 1, resetResults: boolean = false) => {
+    try {
+      setLoading(true);
+
+      const filters: TaskFilters = {
+        page,
+        limit: 10,
+      };
+
+      // Apply filters
+      if (searchText.trim()) {
+        filters.search = searchText.trim();
+      }
+      if (selectedLocation) {
+        filters.location = selectedLocation;
+      }
+      if (selectedCategories.length > 0) {
+        filters.category = selectedCategories[0]; // For simplicity, use first category
+      }
+      if (paymentRange[0] > 0) {
+        filters.minPrice = paymentRange[0];
+      }
+      if (paymentRange[1] < 999) {
+        filters.maxPrice = paymentRange[1];
+      }
+      if (selectedDatePosted.length > 0) {
+        filters.datePosted = selectedDatePosted[0];
+      }
+      if (selectedTags.length > 0) {
+        filters.tags = selectedTags;
+      }
+
+      const response: TasksResponse = await authService.getTasks(filters);
+
+      if (resetResults || page === 1) {
+        setTasks(response.tasks);
+      } else {
+        setTasks((prev) => [...prev, ...response.tasks]);
+      }
+
+      setTotalResults(response.total);
+      setCurrentPage(response.page);
+      setTotalPages(response.totalPages);
+    } catch (error: any) {
+      console.error('Failed to load tasks:', error);
+      Alert.alert('Error', error.message || 'Failed to load jobs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load tasks on component mount
+  useEffect(() => {
+    loadTasks(1, true);
+  }, []);
+
+  // Reload tasks when filters change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      loadTasks(1, true);
+    }, 500); // Debounce API calls
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    searchText,
+    selectedLocation,
+    selectedCategories,
+    selectedExperience,
+    selectedDatePosted,
+    selectedTags,
+    paymentRange,
+  ]);
+
+  // Helper functions for status styling
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'OPEN':
+        return { backgroundColor: '#E8F5E8' };
+      case 'IN_PROGRESS':
+        return { backgroundColor: '#FFF3CD' };
+      case 'COMPLETED':
+        return { backgroundColor: '#D1ECF1' };
+      case 'CANCELLED':
+        return { backgroundColor: '#F8D7DA' };
+      default:
+        return { backgroundColor: '#E9ECEF' };
+    }
+  };
+
+  const getStatusTextStyle = (status: string) => {
+    switch (status) {
+      case 'OPEN':
+        return { color: '#155724' };
+      case 'IN_PROGRESS':
+        return { color: '#856404' };
+      case 'COMPLETED':
+        return { color: '#0C5460' };
+      case 'CANCELLED':
+        return { color: '#721C24' };
+      default:
+        return { color: '#495057' };
     }
   };
 
   return (
     <View style={styles.container}>
       <Header />
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
-        style={styles.scrollView} 
+        style={styles.scrollView}
         showsVerticalScrollIndicator={true}
         contentContainerStyle={styles.scrollViewContent}
         scrollEventThrottle={16}
@@ -129,34 +257,22 @@ export default function JobsScreen() {
           setScrollPosition(event.nativeEvent.contentOffset.y);
         }}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Top Buttons Row */}
         <View style={styles.topButtonsRow}>
           {/* Filters Button */}
-          <TouchableOpacity 
-            style={styles.filtersButton} 
-            onPress={() => setShowFilters(!showFilters)}
-          >
-            <Text style={styles.filtersButtonText}>
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </Text>
-            <Ionicons 
-              name={showFilters ? "chevron-up" : "chevron-down"} 
-              size={16} 
-              color="#2A9D8F" 
-            />
+          <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
+            <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
+            <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
           </TouchableOpacity>
-          
+
           {/* Post Job Button */}
-          <TouchableOpacity 
-            style={styles.postJobButton}
-            onPress={() => router.push('/post-job')}
-          >
+          <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
             <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
             <Text style={styles.postJobButtonText}>Post a Job</Text>
           </TouchableOpacity>
         </View>
-
         {showFilters && (
           <>
             {/* Search Section */}
@@ -175,7 +291,7 @@ export default function JobsScreen() {
             {/* Location Section */}
             <View style={styles.filterSection}>
               <Text style={styles.sectionTitle}>Location</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.locationSelector}
                 onPress={() => {
                   // Store current scroll position before showing cities
@@ -183,17 +299,15 @@ export default function JobsScreen() {
                 }}
               >
                 <Ionicons name="location-outline" size={16} color="#999" />
-                <Text style={styles.locationText}>
-                  {selectedLocation ? selectedLocation : 'Choose city'}
-                </Text>
-                <Ionicons 
-                  name={showCities ? "chevron-up" : "chevron-down"} 
-                  size={16} 
-                  color="#999" 
-                  style={styles.chevron} 
+                <Text style={styles.locationText}>{selectedLocation ? selectedLocation : 'Choose city'}</Text>
+                <Ionicons
+                  name={showCities ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color="#999"
+                  style={styles.chevron}
                 />
               </TouchableOpacity>
-              
+
               {/* City selection modal */}
               <Modal
                 visible={showCities}
@@ -201,11 +315,7 @@ export default function JobsScreen() {
                 animationType="fade"
                 onRequestClose={() => setShowCities(false)}
               >
-                <TouchableOpacity 
-                  style={styles.modalOverlay}
-                  activeOpacity={1}
-                  onPress={() => setShowCities(false)}
-                >
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCities(false)}>
                   <View style={styles.modalContainer}>
                     <View style={styles.citiesDropdownContainer}>
                       <View style={styles.citiesDropdownHeader}>
@@ -214,13 +324,10 @@ export default function JobsScreen() {
                           <Ionicons name="close" size={24} color="#333" />
                         </TouchableOpacity>
                       </View>
-                      <ScrollView 
-                        style={styles.citiesDropdown}
-                        showsVerticalScrollIndicator={true}
-                      >
+                      <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
                         {dutchCities.map((city, index) => (
-                          <TouchableOpacity 
-                            key={index} 
+                          <TouchableOpacity
+                            key={index}
                             style={styles.cityItem}
                             onPress={() => {
                               setSelectedLocation(city);
@@ -230,9 +337,7 @@ export default function JobsScreen() {
                             <Text style={[styles.cityText, selectedLocation === city && styles.selectedCityText]}>
                               {city}
                             </Text>
-                            {selectedLocation === city && (
-                              <Ionicons name="checkmark" size={16} color="#2A9D8F" />
-                            )}
+                            {selectedLocation === city && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
                           </TouchableOpacity>
                         ))}
                       </ScrollView>
@@ -315,8 +420,8 @@ export default function JobsScreen() {
               <Text style={styles.sectionTitle}>Tags</Text>
               <View style={styles.tagsContainer}>
                 {tags.map((tag, index) => (
-                  <TouchableOpacity 
-                    key={index} 
+                  <TouchableOpacity
+                    key={index}
                     style={[styles.tagButton, selectedTags.includes(tag) && styles.tagButtonSelected]}
                     onPress={() => toggleTag(tag)}
                   >
@@ -327,15 +432,106 @@ export default function JobsScreen() {
             </View>
           </>
         )}
-
         {/* Results Count */}
         <View style={styles.resultsContainer}>
-          <Text style={styles.resultsText}>Showing 1-5 of 5 results</Text>
+          <Text style={styles.resultsText}>
+            {loading ? 'Loading...' : `Showing 1-${Math.min(tasks.length, totalResults)} of ${totalResults} results`}
+          </Text>
           <TouchableOpacity style={styles.sortButton}>
             <Text style={styles.sortButtonText}>Sort by latest</Text>
             <Ionicons name="chevron-down" size={16} color="#333" />
           </TouchableOpacity>
         </View>
+        {/* Task Cards */}
+        {loading && tasks.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2A9D8F" />
+            <Text style={styles.loadingText}>Loading jobs...</Text>
+          </View>
+        ) : tasks.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="briefcase-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyTitle}>No jobs found</Text>
+            <Text style={styles.emptySubtitle}>Try adjusting your filters or search criteria</Text>
+          </View>
+        ) : (
+          <View style={styles.tasksContainer}>
+            {tasks.map((task) => (
+              <TouchableOpacity
+                key={task._id}
+                style={styles.taskCard}
+                onPress={() => router.push(`/jobs/${task._id}` as any)}
+              >
+                <View style={styles.taskHeader}>
+                  <Text style={styles.taskTitle}>{task.title}</Text>
+                  <Text style={styles.taskPrice}>€{task.price}</Text>
+                </View>
+
+                <Text style={styles.taskDescription} numberOfLines={2}>
+                  {task.description}
+                </Text>
+
+                <View style={styles.taskMeta}>
+                  {task.location && (
+                    <View style={styles.taskMetaItem}>
+                      <Ionicons name="location-outline" size={14} color="#666" />
+                      <Text style={styles.taskMetaText}>{task.location}</Text>
+                    </View>
+                  )}
+                  {task.category && (
+                    <View style={styles.taskMetaItem}>
+                      <Ionicons name="pricetag-outline" size={14} color="#666" />
+                      <Text style={styles.taskMetaText}>{task.category}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.taskFooter}>
+                  <View style={styles.taskPoster}>
+                    <View style={styles.posterAvatar}>
+                      <Text style={styles.posterInitial}>{task.postedBy.firstName?.charAt(0) || 'U'}</Text>
+                    </View>
+                    <Text style={styles.posterName}>
+                      {task.postedBy.firstName} {task.postedBy.lastName}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.statusBadge, getStatusBadgeStyle(task.status)]}>
+                    <Text style={[styles.statusText, getStatusTextStyle(task.status)]}>
+                      {task.status.replace('_', ' ')}
+                    </Text>
+                  </View>
+                </View>
+
+                {task.tags && task.tags.length > 0 && (
+                  <View style={styles.taskTags}>
+                    {task.tags.slice(0, 3).map((tag, index) => (
+                      <View key={index} style={styles.taskTag}>
+                        <Text style={styles.taskTagText}>{tag}</Text>
+                      </View>
+                    ))}
+                    {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+
+            {/* Load More Button */}
+            {currentPage < totalPages && (
+              <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={() => loadTasks(currentPage + 1, false)}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#2A9D8F" />
+                ) : (
+                  <Text style={styles.loadMoreText}>Load More Jobs</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -598,6 +794,164 @@ const styles = StyleSheet.create({
   },
   selectedCityText: {
     color: '#2A9D8F',
+    fontWeight: '600',
+  },
+  // New styles for task cards and loading states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  tasksContainer: {
+    marginTop: 16,
+  },
+  taskCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+    marginRight: 8,
+  },
+  taskPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2A9D8F',
+  },
+  taskDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  taskMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  taskMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  taskMetaText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  taskFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  taskPoster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  posterAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2A9D8F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  posterInitial: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  posterName: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  taskTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  taskTag: {
+    backgroundColor: '#F1F7F6',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  taskTagText: {
+    fontSize: 11,
+    color: '#2A9D8F',
+    fontWeight: '500',
+  },
+  moreTagsText: {
+    fontSize: 11,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  loadMoreButton: {
+    backgroundColor: '#2A9D8F',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  loadMoreText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
   },
 });
