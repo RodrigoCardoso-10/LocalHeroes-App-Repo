@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import Header from '../components/Header';
 import { Images } from '../constants/Images';
 
@@ -9,10 +10,17 @@ export default function HomeScreen() {
       <Header />
       <ScrollView style={styles.scrollView}>
         {/* Search Bar */}
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Search for jobs..."
-        />
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onPress={() => router.push('/(tabs)/jobs')}
+        >
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search for jobs..."
+            editable={false}
+            pointerEvents="none"
+          />
+        </TouchableOpacity>
 
         {/* Job Categories */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categories}>
@@ -33,7 +41,10 @@ export default function HomeScreen() {
           <Text style={styles.promoDescription}>
             Unlock opportunities with our handpicked list of companies. Explore the offers, compare, and find the best fit for you with confidence.
           </Text>
-          <TouchableOpacity style={styles.promoButton}>
+          <TouchableOpacity 
+            style={styles.promoButton}
+            onPress={() => router.push('/(tabs)/jobs')}
+          >
             <Text style={styles.promoButtonText}>Search Job</Text>
           </TouchableOpacity>
         </View>
