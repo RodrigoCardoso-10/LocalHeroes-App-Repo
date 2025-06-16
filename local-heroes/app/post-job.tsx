@@ -125,7 +125,7 @@ export default function PostJobScreen() {
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
           <Text style={styles.title}>Post a Job</Text>
-          <Text style={styles.subtitle}>Nish dis faucibus pison lacus tristique</Text>{' '}
+          <Text style={styles.subtitle}>Nish dis faucibus pison lacus tristique</Text>
           <PlaceholderInput
             label="Job Title *"
             value={jobTitle}

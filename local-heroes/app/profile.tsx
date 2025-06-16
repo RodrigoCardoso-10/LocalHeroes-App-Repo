@@ -209,7 +209,6 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {' '}
         {/* Profile Picture */}
         <View style={styles.profilePictureContainer}>
           <Image

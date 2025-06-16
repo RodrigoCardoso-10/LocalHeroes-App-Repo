@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -55,14 +56,16 @@ export default function JobsScreen() {
   const [selectedDatePosted, setSelectedDatePosted] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const scrollViewRef = React.useRef<ScrollView>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
-
-  // Backend integration state
+  const [scrollPosition, setScrollPosition] = useState(0); // Backend integration state
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
 
   // Dutch cities list
   const dutchCities = [
@@ -134,7 +137,6 @@ export default function JobsScreen() {
       setSelectedTags([...selectedTags, tag]);
     }
   };
-
   // Clear all filters
   const clearAllFilters = () => {
     setSearchText('');
@@ -145,11 +147,30 @@ export default function JobsScreen() {
     setSelectedTags([]);
     setPaymentRange([0, 999]);
   };
+  // Pull to refresh functionality
+  const onRefresh = useCallback(async () => {
+    if (!isMountedRef.current) return;
 
+    try {
+      setRefreshing(true);
+      await loadTasks(1, true);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setRefreshing(false);
+      }
+    }
+  }, []);
   // Load tasks from backend
   const loadTasks = async (page: number = 1, resetResults: boolean = false) => {
+    if (!isMountedRef.current) return;
+
     try {
-      setLoading(true);
+      // Only show loading spinner if not refreshing
+      if (!refreshing) {
+        setLoading(true);
+      }
 
       const filters: TaskFilters = {
         page,
@@ -182,6 +203,9 @@ export default function JobsScreen() {
 
       const response: TasksResponse = await authService.getTasks(filters);
 
+      // Check if component is still mounted before updating state
+      if (!isMountedRef.current) return;
+
       if (resetResults || page === 1) {
         setTasks(response.tasks);
       } else {
@@ -193,21 +217,35 @@ export default function JobsScreen() {
       setTotalPages(response.totalPages);
     } catch (error: any) {
       console.error('Failed to load tasks:', error);
-      Alert.alert('Error', error.message || 'Failed to load jobs');
+      if (isMountedRef.current) {
+        Alert.alert('Error', error.message || 'Failed to load jobs');
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        // Don't set refreshing to false here as it's handled in onRefresh
+      }
     }
   };
-
   // Load tasks on component mount
   useEffect(() => {
     loadTasks(1, true);
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   // Reload tasks when filters change
   useEffect(() => {
+    if (!isMountedRef.current || loading) return;
+
     const timeoutId = setTimeout(() => {
-      loadTasks(1, true);
+      if (isMountedRef.current && !loading) {
+        loadTasks(1, true);
+      }
     }, 500); // Debounce API calls
 
     return () => clearTimeout(timeoutId);
@@ -254,13 +292,23 @@ export default function JobsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header />
+      <Header />{' '}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
         contentContainerStyle={styles.scrollViewContent}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2A9D8F']}
+            tintColor="#2A9D8F"
+            title="Pull to refresh"
+            titleColor="#666"
+          />
+        }
         onScroll={(event) => {
           setScrollPosition(event.nativeEvent.contentOffset.y);
         }}
@@ -270,21 +318,19 @@ export default function JobsScreen() {
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         keyboardShouldPersistTaps="handled"
       >
-        {' '}
         {/* Top Buttons Row */}
         <View style={styles.topButtonsRow}>
+          {' '}
           {/* Filters Button */}
           <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
             <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
             <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
           </TouchableOpacity>
-
           {/* Clear Filters Button */}
           <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
-            <Ionicons name="refresh-outline" size={16} color="#666" />
+            <Ionicons name="trash-outline" size={16} color="#666" />
             <Text style={styles.clearFiltersButtonText}>Clear</Text>
           </TouchableOpacity>
-
           {/* Post Job Button */}
           <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
             <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
@@ -591,6 +637,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
   },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F7F6',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginRight: 10,
+  },
   postJobButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -610,6 +665,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#666',
+    marginLeft: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2A9D8F',
     marginLeft: 8,
   },
   postJobButtonText: {

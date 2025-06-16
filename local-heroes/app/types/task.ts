@@ -3,7 +3,7 @@ export interface Task {
   _id: string;
   title: string;
   description: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
   postedBy: {
     _id: string;
     id: string;
@@ -11,6 +11,7 @@ export interface Task {
     email: string;
     firstName: string;
     lastName: string;
+    skills?: string[];
   };
   acceptedBy?: {
     _id: string;
@@ -19,6 +20,7 @@ export interface Task {
     email: string;
     firstName: string;
     lastName: string;
+    skills?: string[];
   } | null;
   location?: string;
   price: number;
