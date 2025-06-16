@@ -64,6 +64,13 @@ export default function JobsScreen() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Filter counts state
+  const [filterCounts, setFilterCounts] = useState({
+    categories: {} as Record<string, number>,
+    experienceLevels: {} as Record<string, number>,
+    datePosted: {} as Record<string, number>,
+  });
+
   // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
 
@@ -81,28 +88,33 @@ export default function JobsScreen() {
     'Nijmegen',
     'Enschede',
   ];
-
+  // Dynamic filter arrays based on loaded counts
   const categories = [
-    { name: 'Gardening', count: 10 },
-    { name: 'Bricolage', count: 10 },
-    { name: 'Moving', count: 10 },
-    { name: 'Petsitting', count: 10 },
-    { name: 'Leisure', count: 10 },
-  ];
-
+    { name: 'Gardening', count: filterCounts.categories['Gardening'] || 0 },
+    { name: 'Cleaning', count: filterCounts.categories['Cleaning'] || 0 },
+    { name: 'Moving', count: filterCounts.categories['Moving'] || 0 },
+    { name: 'Pet Care', count: filterCounts.categories['Pet Care'] || 0 },
+    { name: 'Electrical', count: filterCounts.categories['Electrical'] || 0 },
+    { name: 'Assembly', count: filterCounts.categories['Assembly'] || 0 },
+    { name: 'Technology', count: filterCounts.categories['Technology'] || 0 },
+    { name: 'Shopping', count: filterCounts.categories['Shopping'] || 0 },
+    { name: 'Painting', count: filterCounts.categories['Painting'] || 0 },
+    { name: 'Plumbing', count: filterCounts.categories['Plumbing'] || 0 },
+    { name: 'Events', count: filterCounts.categories['Events'] || 0 },
+    { name: 'Repair', count: filterCounts.categories['Repair'] || 0 },
+    { name: 'Education', count: filterCounts.categories['Education'] || 0 },
+  ].filter((cat) => cat.count > 0); // Only show categories with jobs
   const experienceLevels = [
-    { name: 'No-experience', count: 10 },
-    { name: 'Fresher', count: 10 },
-    { name: 'Intermediate', count: 10 },
-    { name: 'Expert', count: 10 },
-  ];
-
+    { name: 'No experience', count: filterCounts.experienceLevels['No experience'] || 0 },
+    { name: 'Beginner', count: filterCounts.experienceLevels['Beginner'] || 0 },
+    { name: 'Intermediate', count: filterCounts.experienceLevels['Intermediate'] || 0 },
+    { name: 'Expert', count: filterCounts.experienceLevels['Expert'] || 0 },
+  ].filter((exp) => exp.count > 0); // Only show levels with jobs
   const datePostedOptions = [
-    { name: 'All', count: 10 },
-    { name: 'Last Hour', count: 10 },
-    { name: 'Last 24 Hours', count: 10 },
-    { name: 'Last 7 Days', count: 10 },
-    { name: 'Last 30 Days', count: 10 },
+    { name: 'All', count: filterCounts.datePosted['All'] || 0 },
+    { name: 'Last 24 Hours', count: filterCounts.datePosted['Last 24 Hours'] || 0 },
+    { name: 'Last 7 Days', count: filterCounts.datePosted['Last 7 Days'] || 0 },
+    { name: 'Last 30 Days', count: filterCounts.datePosted['Last 30 Days'] || 0 },
   ];
 
   const tags = ['engineering', 'design', 'marketing', 'ui/ux', 'management', 'software', 'construction'];
@@ -146,14 +158,16 @@ export default function JobsScreen() {
     setSelectedDatePosted([]);
     setSelectedTags([]);
     setPaymentRange([0, 999]);
-  };
-  // Pull to refresh functionality
+  }; // Pull to refresh functionality
   const onRefresh = useCallback(async () => {
     if (!isMountedRef.current) return;
 
     try {
       setRefreshing(true);
-      await loadTasks(1, true);
+      await Promise.all([
+        loadTasks(1, true),
+        loadFilterCounts(), // Also refresh filter counts
+      ]);
     } catch (error) {
       console.error('Refresh failed:', error);
     } finally {
@@ -226,10 +240,37 @@ export default function JobsScreen() {
         // Don't set refreshing to false here as it's handled in onRefresh
       }
     }
+  }; // Load filter counts
+  const loadFilterCounts = async () => {
+    if (!isMountedRef.current) return;
+
+    try {
+      const response = await authService.getFilterCounts();
+
+      if (!isMountedRef.current) return;
+
+      setFilterCounts({
+        categories: response.categories || {},
+        experienceLevels: response.experienceLevels || {},
+        datePosted: response.datePosted || {},
+      });
+    } catch (error) {
+      console.error('Failed to load filter counts:', error);
+      // Set default counts on error
+      if (isMountedRef.current) {
+        setFilterCounts({
+          categories: {},
+          experienceLevels: {},
+          datePosted: {},
+        });
+      }
+    }
   };
+
   // Load tasks on component mount
   useEffect(() => {
     loadTasks(1, true);
+    loadFilterCounts(); // Load filter counts initially
   }, []);
 
   // Cleanup on unmount

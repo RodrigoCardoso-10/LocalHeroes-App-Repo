@@ -272,8 +272,9 @@ export const authService = {
       throw error.response?.data || { message: 'Profile picture upload failed' };
     }
   },
+  // Tasks/Jobs API methods
 
-  // Tasks/Jobs API methods  // Get all tasks with filtering
+  // Get all tasks with filtering
   getTasks: async (filters?: {
     search?: string;
     location?: string;
@@ -306,6 +307,16 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to fetch tasks' };
+    }
+  },
+
+  // Get filter counts
+  getFilterCounts: async () => {
+    try {
+      const response = await api.get('/tasks/filter-counts');
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch filter counts' };
     }
   },
 
