@@ -39,6 +39,7 @@ export interface TaskFilters {
   status?: string;
   datePosted?: string;
   tags?: string[];
+  experienceLevel?: string;
   page?: number;
   limit?: number;
 }

@@ -75,10 +75,9 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.settingsIcon}>
           <Ionicons name="settings-outline" size={24} color="white" />
         </TouchableOpacity>
-      </View>{' '}
+      </View>
       {/* Settings Items */}
       <View style={styles.content}>
-        {' '}
         {/* Edit Profile Button - Direct navigation to profile page */}
         <TouchableOpacity style={styles.menuItem} onPress={() => router.navigate('/profile' as any)}>
           <View style={styles.iconContainer}>
@@ -126,7 +125,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <MaterialIcons name="mail-outline" size={24} color="#999" />
-        </TouchableOpacity>{' '}
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
           <View style={styles.profileCircle}>
             <Text style={styles.profileText}>{user?.firstName?.charAt(0)?.toUpperCase() || 'U'}</Text>

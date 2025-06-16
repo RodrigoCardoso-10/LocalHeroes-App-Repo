@@ -127,13 +127,23 @@ export default function JobsScreen() {
       setSelectedDatePosted([...selectedDatePosted, date]);
     }
   };
-
   const toggleTag = (tag: string): void => {
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((item) => item !== tag));
     } else {
       setSelectedTags([...selectedTags, tag]);
     }
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchText('');
+    setSelectedLocation('');
+    setSelectedCategories([]);
+    setSelectedExperience([]);
+    setSelectedDatePosted([]);
+    setSelectedTags([]);
+    setPaymentRange([0, 999]);
   };
 
   // Load tasks from backend
@@ -144,9 +154,7 @@ export default function JobsScreen() {
       const filters: TaskFilters = {
         page,
         limit: 10,
-      };
-
-      // Apply filters
+      }; // Apply filters
       if (searchText.trim()) {
         filters.search = searchText.trim();
       }
@@ -155,6 +163,9 @@ export default function JobsScreen() {
       }
       if (selectedCategories.length > 0) {
         filters.category = selectedCategories[0]; // For simplicity, use first category
+      }
+      if (selectedExperience.length > 0) {
+        filters.experienceLevel = selectedExperience[0]; // For simplicity, use first experience level
       }
       if (paymentRange[0] > 0) {
         filters.minPrice = paymentRange[0];
@@ -259,12 +270,19 @@ export default function JobsScreen() {
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         keyboardShouldPersistTaps="handled"
       >
+        {' '}
         {/* Top Buttons Row */}
         <View style={styles.topButtonsRow}>
           {/* Filters Button */}
           <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
             <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
             <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
+          </TouchableOpacity>
+
+          {/* Clear Filters Button */}
+          <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
+            <Ionicons name="refresh-outline" size={16} color="#666" />
+            <Text style={styles.clearFiltersButtonText}>Clear</Text>
           </TouchableOpacity>
 
           {/* Post Job Button */}
@@ -562,7 +580,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    flex: 1,
+    marginRight: 10,
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
     marginRight: 10,
   },
   postJobButton: {
@@ -579,6 +605,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#2A9D8F',
     marginRight: 8,
+  },
+  clearFiltersButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginLeft: 8,
   },
   postJobButtonText: {
     fontSize: 14,

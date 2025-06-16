@@ -13,6 +13,8 @@ type User = {
   phone?: string;
   address?: string;
   bio?: string;
+  skills?: string[];
+  profilePicture?: string;
   createdAt?: string;
   updatedAt?: string;
   emailVerifiedAt?: string | null;
@@ -156,20 +158,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  };
-  // Update user function
+  }; // Update user function
   const updateUser = async (userData: Partial<User>) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Update profile on server with only the allowed fields
+      // Update profile on server with all the supported fields
       const profileData = {
         firstName: userData.firstName,
         lastName: userData.lastName,
+        email: userData.email,
         phone: userData.phone,
         address: userData.address,
         bio: userData.bio,
+        skills: userData.skills,
+        profilePicture: userData.profilePicture,
       };
 
       // Filter out undefined values
