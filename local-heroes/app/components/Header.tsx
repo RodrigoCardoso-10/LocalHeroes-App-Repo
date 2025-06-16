@@ -1,28 +1,37 @@
+import { FontAwesome } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Images } from '../constants/Images';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface HeaderProps {
-  showAuthButtons?: boolean;
+  isLoggedIn: boolean;
 }
 
-export default function Header({ showAuthButtons = true }: HeaderProps) {
+export default function Header({ isLoggedIn }: HeaderProps) {
+  const router = useRouter();
+
   return (
     <View style={styles.headerContainer}>
       <View style={styles.headerLeft}>
-        <Image source={Images.logo} style={styles.headerLogo} />
-        <Text style={styles.headerTitle}>LocalHeroes</Text>
+        <FontAwesome name="briefcase" size={24} color="#fff" style={{ marginRight: 8 }} />
+        <Text style={styles.headerTitle}>LocalHero</Text>
       </View>
-      {showAuthButtons && (
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.loginButton}>
-            <Text style={styles.loginText}>Login</Text>
+      <View style={styles.headerRight}>
+        {isLoggedIn ? (
+          <TouchableOpacity onPress={() => router.push('/settings')}>
+            <FontAwesome name="gear" size={24} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.registerButton}>
-            <Text style={styles.registerText}>Register</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        ) : (
+          <>
+            <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')}>
+              <Text style={styles.loginText}>Login</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.registerButton} onPress={() => router.push('/register')}>
+              <Text style={styles.registerText}>Register</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -34,21 +43,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerLogo: {
-    width: 32,
-    height: 32,
-    marginRight: 8,
-  },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#222',
+    color: '#fff',
   },
   headerRight: {
     flexDirection: 'row',
@@ -59,10 +63,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 16,
     borderRadius: 6,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#fff',
   },
   loginText: {
-    color: '#222',
+    color: '#000',
     fontWeight: '500',
   },
   registerButton: {

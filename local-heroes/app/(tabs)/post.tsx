@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
-import { router, Redirect } from 'expo-router';
+import { Redirect } from 'expo-router';
+import React from 'react';
+import { StyleSheet } from 'react-native';
 
 export default function PostScreen() {
   // Redirect to the post-job page

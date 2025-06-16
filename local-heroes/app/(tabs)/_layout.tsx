@@ -1,3 +1,5 @@
+// app/(tabs)/_layout.tsx
+
 import { Tabs } from 'expo-router';
 import React from 'react';
 import CustomTabBar from '../components/CustomTabBar';
@@ -14,7 +16,11 @@ export default function TabLayout() {
       <Tabs.Screen name="jobs" options={{}} />
       <Tabs.Screen name="post" options={{}} />
       <Tabs.Screen name="inbox" options={{}} />
+      <Tabs.Screen name="profile" options={{}} />
+      
+      {/* Add these missing screens */}
       <Tabs.Screen name="about" options={{}} />
+      <Tabs.Screen name="contact" options={{}} />
       <Tabs.Screen name="settings" options={{}} />
     </Tabs>
   );

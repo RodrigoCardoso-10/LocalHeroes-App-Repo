@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
-  View,
   TextInput,
   TouchableOpacity,
-  Pressable,
-  Modal,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
+  View
 } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import Header from '../components/Header';
-import Slider from '@react-native-community/slider';
+import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 import { Task, TaskFilters, TasksResponse } from '../types/task';
 
@@ -241,9 +240,11 @@ export default function JobsScreen() {
     }
   };
 
+  const { isLoggedIn } = useAuth();
+
   return (
     <View style={styles.container}>
-      <Header />
+      <Header isLoggedIn={isLoggedIn} />
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -954,4 +955,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-});
+}); 
