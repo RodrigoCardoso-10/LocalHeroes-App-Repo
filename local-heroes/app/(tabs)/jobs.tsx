@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -55,14 +56,23 @@ export default function JobsScreen() {
   const [selectedDatePosted, setSelectedDatePosted] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const scrollViewRef = React.useRef<ScrollView>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
-
-  // Backend integration state
+  const [scrollPosition, setScrollPosition] = useState(0); // Backend integration state
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Filter counts state
+  const [filterCounts, setFilterCounts] = useState({
+    categories: {} as Record<string, number>,
+    experienceLevels: {} as Record<string, number>,
+    datePosted: {} as Record<string, number>,
+  });
+
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
 
   // Dutch cities list
   const dutchCities = [
@@ -78,28 +88,33 @@ export default function JobsScreen() {
     'Nijmegen',
     'Enschede',
   ];
-
+  // Dynamic filter arrays based on loaded counts
   const categories = [
-    { name: 'Gardening', count: 10 },
-    { name: 'Bricolage', count: 10 },
-    { name: 'Moving', count: 10 },
-    { name: 'Petsitting', count: 10 },
-    { name: 'Leisure', count: 10 },
-  ];
-
+    { name: 'Gardening', count: filterCounts.categories['Gardening'] || 0 },
+    { name: 'Cleaning', count: filterCounts.categories['Cleaning'] || 0 },
+    { name: 'Moving', count: filterCounts.categories['Moving'] || 0 },
+    { name: 'Pet Care', count: filterCounts.categories['Pet Care'] || 0 },
+    { name: 'Electrical', count: filterCounts.categories['Electrical'] || 0 },
+    { name: 'Assembly', count: filterCounts.categories['Assembly'] || 0 },
+    { name: 'Technology', count: filterCounts.categories['Technology'] || 0 },
+    { name: 'Shopping', count: filterCounts.categories['Shopping'] || 0 },
+    { name: 'Painting', count: filterCounts.categories['Painting'] || 0 },
+    { name: 'Plumbing', count: filterCounts.categories['Plumbing'] || 0 },
+    { name: 'Events', count: filterCounts.categories['Events'] || 0 },
+    { name: 'Repair', count: filterCounts.categories['Repair'] || 0 },
+    { name: 'Education', count: filterCounts.categories['Education'] || 0 },
+  ].filter((cat) => cat.count > 0); // Only show categories with jobs
   const experienceLevels = [
-    { name: 'No-experience', count: 10 },
-    { name: 'Fresher', count: 10 },
-    { name: 'Intermediate', count: 10 },
-    { name: 'Expert', count: 10 },
-  ];
-
+    { name: 'No experience', count: filterCounts.experienceLevels['No experience'] || 0 },
+    { name: 'Beginner', count: filterCounts.experienceLevels['Beginner'] || 0 },
+    { name: 'Intermediate', count: filterCounts.experienceLevels['Intermediate'] || 0 },
+    { name: 'Expert', count: filterCounts.experienceLevels['Expert'] || 0 },
+  ].filter((exp) => exp.count > 0); // Only show levels with jobs
   const datePostedOptions = [
-    { name: 'All', count: 10 },
-    { name: 'Last Hour', count: 10 },
-    { name: 'Last 24 Hours', count: 10 },
-    { name: 'Last 7 Days', count: 10 },
-    { name: 'Last 30 Days', count: 10 },
+    { name: 'All', count: filterCounts.datePosted['All'] || 0 },
+    { name: 'Last 24 Hours', count: filterCounts.datePosted['Last 24 Hours'] || 0 },
+    { name: 'Last 7 Days', count: filterCounts.datePosted['Last 7 Days'] || 0 },
+    { name: 'Last 30 Days', count: filterCounts.datePosted['Last 30 Days'] || 0 },
   ];
 
   const tags = ['engineering', 'design', 'marketing', 'ui/ux', 'management', 'software', 'construction'];
@@ -127,7 +142,6 @@ export default function JobsScreen() {
       setSelectedDatePosted([...selectedDatePosted, date]);
     }
   };
-
   const toggleTag = (tag: string): void => {
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((item) => item !== tag));
@@ -135,18 +149,47 @@ export default function JobsScreen() {
       setSelectedTags([...selectedTags, tag]);
     }
   };
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchText('');
+    setSelectedLocation('');
+    setSelectedCategories([]);
+    setSelectedExperience([]);
+    setSelectedDatePosted([]);
+    setSelectedTags([]);
+    setPaymentRange([0, 999]);
+  }; // Pull to refresh functionality
+  const onRefresh = useCallback(async () => {
+    if (!isMountedRef.current) return;
 
+    try {
+      setRefreshing(true);
+      await Promise.all([
+        loadTasks(1, true),
+        loadFilterCounts(), // Also refresh filter counts
+      ]);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setRefreshing(false);
+      }
+    }
+  }, []);
   // Load tasks from backend
   const loadTasks = async (page: number = 1, resetResults: boolean = false) => {
+    if (!isMountedRef.current) return;
+
     try {
-      setLoading(true);
+      // Only show loading spinner if not refreshing
+      if (!refreshing) {
+        setLoading(true);
+      }
 
       const filters: TaskFilters = {
         page,
         limit: 10,
-      };
-
-      // Apply filters
+      }; // Apply filters
       if (searchText.trim()) {
         filters.search = searchText.trim();
       }
@@ -155,6 +198,9 @@ export default function JobsScreen() {
       }
       if (selectedCategories.length > 0) {
         filters.category = selectedCategories[0]; // For simplicity, use first category
+      }
+      if (selectedExperience.length > 0) {
+        filters.experienceLevel = selectedExperience[0]; // For simplicity, use first experience level
       }
       if (paymentRange[0] > 0) {
         filters.minPrice = paymentRange[0];
@@ -171,6 +217,9 @@ export default function JobsScreen() {
 
       const response: TasksResponse = await authService.getTasks(filters);
 
+      // Check if component is still mounted before updating state
+      if (!isMountedRef.current) return;
+
       if (resetResults || page === 1) {
         setTasks(response.tasks);
       } else {
@@ -182,21 +231,62 @@ export default function JobsScreen() {
       setTotalPages(response.totalPages);
     } catch (error: any) {
       console.error('Failed to load tasks:', error);
-      Alert.alert('Error', error.message || 'Failed to load jobs');
+      if (isMountedRef.current) {
+        Alert.alert('Error', error.message || 'Failed to load jobs');
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        // Don't set refreshing to false here as it's handled in onRefresh
+      }
+    }
+  }; // Load filter counts
+  const loadFilterCounts = async () => {
+    if (!isMountedRef.current) return;
+
+    try {
+      const response = await authService.getFilterCounts();
+
+      if (!isMountedRef.current) return;
+
+      setFilterCounts({
+        categories: response.categories || {},
+        experienceLevels: response.experienceLevels || {},
+        datePosted: response.datePosted || {},
+      });
+    } catch (error) {
+      console.error('Failed to load filter counts:', error);
+      // Set default counts on error
+      if (isMountedRef.current) {
+        setFilterCounts({
+          categories: {},
+          experienceLevels: {},
+          datePosted: {},
+        });
+      }
     }
   };
 
   // Load tasks on component mount
   useEffect(() => {
     loadTasks(1, true);
+    loadFilterCounts(); // Load filter counts initially
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   // Reload tasks when filters change
   useEffect(() => {
+    if (!isMountedRef.current || loading) return;
+
     const timeoutId = setTimeout(() => {
-      loadTasks(1, true);
+      if (isMountedRef.current && !loading) {
+        loadTasks(1, true);
+      }
     }, 500); // Debounce API calls
 
     return () => clearTimeout(timeoutId);
@@ -243,13 +333,23 @@ export default function JobsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header />
+      <Header />{' '}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
         contentContainerStyle={styles.scrollViewContent}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2A9D8F']}
+            tintColor="#2A9D8F"
+            title="Pull to refresh"
+            titleColor="#666"
+          />
+        }
         onScroll={(event) => {
           setScrollPosition(event.nativeEvent.contentOffset.y);
         }}
@@ -261,12 +361,17 @@ export default function JobsScreen() {
       >
         {/* Top Buttons Row */}
         <View style={styles.topButtonsRow}>
+          {' '}
           {/* Filters Button */}
           <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
             <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
             <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
           </TouchableOpacity>
-
+          {/* Clear Filters Button */}
+          <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
+            <Ionicons name="trash-outline" size={16} color="#666" />
+            <Text style={styles.clearFiltersButtonText}>Clear</Text>
+          </TouchableOpacity>
           {/* Post Job Button */}
           <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
             <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
@@ -562,7 +667,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    flex: 1,
+    marginRight: 10,
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F7F6',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
     marginRight: 10,
   },
   postJobButton: {
@@ -579,6 +701,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#2A9D8F',
     marginRight: 8,
+  },
+  clearFiltersButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginLeft: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2A9D8F',
+    marginLeft: 8,
   },
   postJobButtonText: {
     fontSize: 14,
