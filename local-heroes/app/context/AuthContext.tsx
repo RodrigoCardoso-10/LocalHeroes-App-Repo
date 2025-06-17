@@ -23,6 +23,7 @@ type User = {
 // Define context type
 type AuthContextType = {
   user: User | null;
+  isLoggedIn: boolean;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -40,6 +41,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isLoggedIn = !!user;
 
   // Check if user is already logged in and validate with server
   useEffect(() => {
@@ -197,7 +200,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
   };
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, isLoading, error, login, register, logout, updateUser, clearError }}>
       {children}
     </AuthContext.Provider>
   );
