@@ -1,41 +1,148 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
-
-interface Notification {
-  id: string;
-  type: 'application' | 'response';
-  jobTitle: string;
-  companyName?: string;
-  userName?: string;
-  date: string;
-  read: boolean;
-}
+import { authService } from '../services/api';
+import { Notification, NotificationsResponse, NotificationType } from '../types/notification';
 
 export default function InboxScreen() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  // For demo purposes, we're starting with an empty notifications array
-  // In a real app, you would fetch these from your backend
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const markAsRead = (id: string) => {
-    setNotifications(prevNotifications => 
-      prevNotifications.map(notification => 
-        notification.id === id ? { ...notification, read: true } : notification
-      )
-    );
+  const loadNotifications = async (refresh = false) => {
+    try {
+      if (refresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response: NotificationsResponse = await authService.getNotifications();
+      setNotifications(response.notifications);
+      setUnreadCount(response.unreadCount);
+    } catch (error: any) {
+      console.error('Failed to load notifications:', error);
+      Alert.alert('Error', error.message || 'Failed to load notifications');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prevNotifications => 
-      prevNotifications.filter(notification => notification.id !== id)
-    );
+  const markAsRead = async (notificationId: string) => {
+    try {
+      await authService.markNotificationAsRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification._id === notificationId ? { ...notification, read: true } : notification
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error: any) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
-  const unreadCount = notifications.filter(notification => !notification.read).length;
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      await authService.deleteNotification(notificationId);
+      setNotifications((prev) => prev.filter((notification) => notification._id !== notificationId));
+    } catch (error: any) {
+      console.error('Failed to delete notification:', error);
+      Alert.alert('Error', error.message || 'Failed to delete notification');
+    }
+  };
 
+  const handleNotificationPress = async (notification: Notification) => {
+    // Mark as read if not already read
+    if (!notification.read) {
+      await markAsRead(notification._id);
+    }
+
+    // Navigate to relevant page based on notification type
+    if (notification.taskId) {
+      router.push(`/jobs/${notification.taskId}`);
+    }
+  };
+
+  const getNotificationIcon = (type: NotificationType) => {
+    switch (type) {
+      case NotificationType.JOB_APPLICATION:
+        return 'person-add';
+      case NotificationType.APPLICATION_ACCEPTED:
+        return 'checkmark-circle';
+      case NotificationType.APPLICATION_REJECTED:
+        return 'close-circle';
+      case NotificationType.JOB_COMPLETED:
+        return 'checkmark-done-circle';
+      case NotificationType.JOB_CANCELLED:
+        return 'close-circle-outline';
+      default:
+        return 'mail-outline';
+    }
+  };
+
+  const getNotificationColor = (type: NotificationType) => {
+    switch (type) {
+      case NotificationType.JOB_APPLICATION:
+        return '#2A9D8F';
+      case NotificationType.APPLICATION_ACCEPTED:
+        return '#28A745';
+      case NotificationType.APPLICATION_REJECTED:
+        return '#DC3545';
+      case NotificationType.JOB_COMPLETED:
+        return '#007BFF';
+      case NotificationType.JOB_CANCELLED:
+        return '#FFC107';
+      default:
+        return '#6C757D';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const onRefresh = () => {
+    loadNotifications(true);
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.container}>
+        <Header />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#2A9D8F" />
+          <Text style={styles.loadingText}>Loading notifications...</Text>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.container}>
       <Header />
@@ -47,37 +154,31 @@ export default function InboxScreen() {
       </View>
 
       {notifications.length > 0 ? (
-        <ScrollView style={styles.notificationsContainer}>
+        <ScrollView
+          style={styles.notificationsContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2A9D8F']} tintColor="#2A9D8F" />
+          }
+        >
           {notifications.map((notification) => (
-            <TouchableOpacity 
-              key={notification.id} 
+            <TouchableOpacity
+              key={notification._id}
               style={[styles.notificationItem, !notification.read && styles.unreadItem]}
-              onPress={() => markAsRead(notification.id)}
+              onPress={() => handleNotificationPress(notification)}
             >
               <View style={styles.notificationIconContainer}>
-                <Ionicons 
-                  name={notification.type === 'application' ? 'briefcase-outline' : 'mail-outline'} 
-                  size={24} 
-                  color="#2A9D8F" 
+                <Ionicons
+                  name={getNotificationIcon(notification.type)}
+                  size={24}
+                  color={getNotificationColor(notification.type)}
                 />
               </View>
               <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>
-                  {notification.type === 'application' 
-                    ? `New application for ${notification.jobTitle}` 
-                    : `Response to your application for ${notification.jobTitle}`}
-                </Text>
-                <Text style={styles.notificationDetails}>
-                  {notification.type === 'application' 
-                    ? `${notification.userName} has applied` 
-                    : `${notification.companyName} has responded`}
-                </Text>
-                <Text style={styles.notificationDate}>{notification.date}</Text>
+                <Text style={styles.notificationTitle}>{notification.title}</Text>
+                <Text style={styles.notificationDetails}>{notification.message}</Text>
+                <Text style={styles.notificationDate}>{formatDate(notification.createdAt)}</Text>
               </View>
-              <TouchableOpacity 
-                style={styles.deleteButton}
-                onPress={() => deleteNotification(notification.id)}
-              >
+              <TouchableOpacity style={styles.deleteButton} onPress={() => deleteNotification(notification._id)}>
                 <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
               </TouchableOpacity>
             </TouchableOpacity>
@@ -105,6 +206,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   headerContainer: {
     flexDirection: 'row',
