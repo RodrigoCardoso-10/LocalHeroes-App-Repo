@@ -617,6 +617,20 @@ export default function JobsScreen() {
                     {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
                   </View>
                 )}
+                {/* Apply Now Button */}
+                <TouchableOpacity
+                  style={[styles.applyButton, { marginTop: 10 }]}
+                  onPress={async () => {
+                    try {
+                      await authService.applyForTask(task._id);
+                      Alert.alert('Application Sent', 'You have applied for this job.');
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message || 'Failed to apply for this job.');
+                    }
+                  }}
+                >
+                  <Text style={styles.applyButtonText}>Apply Now</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
             ))}
 
