@@ -19,15 +19,15 @@ const TAB_ICONS: TabIcon[] = [
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   // Create animated values for each tab
   const animatedValues = useRef(
-    state.routes.map((route) => ({
+    state.routes.map(() => ({
       scale: new Animated.Value(1),
       opacity: new Animated.Value(0),
-      translateY: new Animated.Value(route.name === 'post' ? -20 : 0),
+      translateY: new Animated.Value(0),
     }))
   ).current;
 
   useEffect(() => {
-    state.routes.forEach((route, index) => {
+    state.routes.forEach((_, index) => {
       const isActive = state.index === index;
       let animations = [];
 
@@ -43,20 +43,15 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         })
       );
 
-      // Translate Y animation (only for non-post tabs)
-      if (route.name !== 'post') {
-        animations.push(
-          Animated.spring(animatedValues[index].translateY, {
-            toValue: isActive ? -20 : 0,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 7,
-          })
-        );
-      } else {
-        // For 'post' tab, ensure it stays at its initial raised position
-        animatedValues[index].translateY.setValue(-20);
-      }
+      // Translate Y animation
+      animations.push(
+        Animated.spring(animatedValues[index].translateY, {
+          toValue: isActive ? -20 : 0,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 7,
+        })
+      );
 
       Animated.parallel(animations).start();
     });
@@ -89,24 +84,22 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
               onPress={() => navigation.navigate(route.name)}
-              style={route.name === 'post' ? styles.centerTabButton : styles.tabButton}
+              style={index === 2 ? styles.centerTabButton : styles.tabButton}
               activeOpacity={0.8}
             >
               <Animated.View
                 style={[
                   styles.tabIconContainer,
-                  route.name === 'post' ? styles.centerTabCircle : (isFocused && styles.activeTabCircle),
+                  isFocused && styles.activeTabCircle,
+                  index === 2 && styles.centerTabCircle,
                   animatedStyle,
                 ]}
               >
                 <FontAwesome
                   name={icon.name}
-                  size={route.name === 'post' ? 28 : 24}
-                  style={{
-                    color: route.name === 'post'
-                      ? '#fff'
-                      : (isFocused ? '#2BB6A3' : '#fff')
-                  }}
+                  size={index === 2 ? 28 : 24}
+                  color={isFocused ? '#fff' : '#fff'}
+                  style={isFocused ? { color: '#2BB6A3' } : {}}
                 />
               </Animated.View>
               {/* Note: I changed Animated.Text to Text because it wasn't defined. If you need the label to animate, you need to create it with Animated.createAnimatedComponent */}
@@ -178,6 +171,7 @@ const styles = StyleSheet.create({
   },
   activeTabCircle: {
     backgroundColor: '#2BB6A3',
+    marginTop: -20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -188,6 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 70,
+    marginTop: -30,
     zIndex: 3,
   },
   centerTabCircle: {

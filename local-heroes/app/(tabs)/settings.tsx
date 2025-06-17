@@ -52,7 +52,7 @@ export default function SettingsScreen() {
       title: 'Customer Support',
       subtitle: '24/7 Customer team to help you',
       icon: <MaterialIcons name="support-agent" size={24} color="#0ca678" />,
-      href: '/support',
+      href: '/customer-support',
     },
     {
       id: 'payment',
@@ -61,12 +61,28 @@ export default function SettingsScreen() {
       icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#0ca678" />,
       href: '/payment-slips',
     },
+    {
+      id: 'about',
+      title: 'About Us',
+      subtitle: 'Learn more about LocalHeroes',
+      icon: <MaterialIcons name="info-outline" size={24} color="#0ca678" />,
+      href: '/about',
+    },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <MaterialCommunityIcons name="toolbox" size={24} color="white" />
+          <Text style={styles.headerTitle}>LocalHero</Text>
+        </View>
+        <TouchableOpacity style={styles.settingsIcon}>
+          <Ionicons name="settings-outline" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
       {/* Settings Items */}
       <View style={styles.content}>
         {/* Edit Profile Button - Direct navigation to profile page */}
@@ -82,7 +98,11 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         {/* Other menu items */}
         {menuItems.slice(1).map((item) => (
-          <TouchableOpacity style={styles.menuItem} key={item.id}>
+          <TouchableOpacity 
+            style={styles.menuItem} 
+            key={item.id}
+            onPress={() => router.navigate(item.href as any)}
+          >
             <View style={styles.iconContainer}>{item.icon}</View>
             <View style={styles.menuItemText}>
               <Text style={styles.menuItemTitle}>{item.title}</Text>
