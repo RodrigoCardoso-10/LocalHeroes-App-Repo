@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Header from '../components/Header';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 
 interface Notification {
@@ -38,7 +38,7 @@ export default function InboxScreen() {
 
   return (
     <View style={styles.container}>
-      <Header />
+      {/* <Header /> */}
       <View style={styles.headerContainer}>
         <Text style={styles.title}>Inbox</Text>
         <View style={styles.badgeContainer}>

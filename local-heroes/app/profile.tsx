@@ -1,24 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  TextInput,
-  ScrollView,
-  Image,
-  Alert,
-  Platform,
-  ActionSheetIOS,
-  ActivityIndicator,
-} from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    ActionSheetIOS,
+    Alert,
+    Image,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { useAuth } from './context/AuthContext';
-import { authService } from './services/api';
 
 export default function EditProfileScreen() {
   const { user, updateUser } = useAuth();
@@ -193,21 +191,6 @@ export default function EditProfileScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={isLoading}>
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#0ca678" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.content}>
         {/* Profile Picture */}
         <View style={styles.profilePictureContainer}>
@@ -284,7 +267,7 @@ export default function EditProfileScreen() {
 
           <View style={styles.skillsContainer}>
             {profileData.skills.map((skill, index) => (
-              <View key={index} style={styles.skillTag}>
+              <View key={index} style={styles.skillChip}>
                 <Text style={styles.skillText}>{skill}</Text>
                 <TouchableOpacity onPress={() => removeSkill(index)}>
                   <Ionicons name="close-circle" size={16} color="#666" />
@@ -293,17 +276,18 @@ export default function EditProfileScreen() {
             ))}
           </View>
 
-          <View style={styles.addSkillContainer}>
+          <View style={styles.newSkillInput}>
             <TextInput
-              style={styles.skillInput}
+              style={styles.input}
               value={newSkill}
               onChangeText={setNewSkill}
               placeholder="Add a new skill"
             />
-            <TouchableOpacity style={styles.addButton} onPress={addSkill}>
-              <Ionicons name="add" size={24} color="white" />
-            </TouchableOpacity>
           </View>
+
+          <TouchableOpacity style={styles.addButton} onPress={addSkill}>
+            <Text style={styles.addButtonText}>Add Skill</Text>
+          </TouchableOpacity>
         </View>
         {/* Bio Section */}
         <View style={styles.formSection}>
@@ -329,14 +313,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#000',
-    padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#2BB6A3',
   },
   backButton: {
-    padding: 4,
+    padding: 8,
   },
   headerTitle: {
     color: 'white',
@@ -344,7 +329,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   saveButton: {
-    padding: 4,
+    padding: 8,
   },
   saveButtonText: {
     color: '#0ca678',
@@ -356,62 +341,51 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   profilePictureContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-    position: 'relative',
+    alignSelf: 'center',
+    marginTop: 20,
+    marginBottom: 30,
   },
   profilePicture: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     borderWidth: 3,
-    borderColor: '#0ca678',
+    borderColor: '#2BB6A3',
   },
   editPictureButton: {
     position: 'absolute',
     bottom: 0,
-    right: '35%',
-    backgroundColor: '#0ca678',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    right: 0,
+    backgroundColor: '#2BB6A3',
+    borderRadius: 20,
+    padding: 8,
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: '#fff',
   },
   formSection: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 15,
     color: '#333',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 15,
   },
   inputLabel: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 5,
   },
   input: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 4,
-    padding: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
     fontSize: 16,
+    backgroundColor: '#fff',
   },
   bioInput: {
     height: 100,
@@ -420,42 +394,56 @@ const styles = StyleSheet.create({
   skillsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  skillTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e6f8f5',
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  skillChip: {
+    backgroundColor: '#e0e0e0',
+    borderRadius: 15,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     marginRight: 8,
     marginBottom: 8,
-  },
-  skillText: {
-    color: '#0ca678',
-    marginRight: 4,
-  },
-  addSkillContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  skillInput: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 4,
-    padding: 12,
+  skillText: {
+    fontSize: 14,
+    marginRight: 5,
+  },
+  newSkillInput: {
     borderWidth: 1,
     borderColor: '#ddd',
-    marginRight: 8,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    marginBottom: 10,
   },
   addButton: {
-    backgroundColor: '#0ca678',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    backgroundColor: '#2BB6A3',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    alignSelf: 'flex-start',
+    marginBottom: 20,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  logoutButton: {
+    backgroundColor: '#ff6347',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     alignItems: 'center',
+    marginTop: 20,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   bottomSpace: {
     height: 40,

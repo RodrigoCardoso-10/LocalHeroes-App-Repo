@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  View,
   TextInput,
   TouchableOpacity,
-  Pressable,
-  Modal,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
+  View
 } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import Header from '../components/Header';
+// import Header from '../components/Header'; // Removed as header is handled by _layout.tsx
 import Slider from '@react-native-community/slider';
 import { authService } from '../services/api';
 import { Task, TaskFilters, TasksResponse } from '../types/task';
@@ -240,7 +238,8 @@ export default function JobsScreen() {
         // Don't set refreshing to false here as it's handled in onRefresh
       }
     }
-  }; // Load filter counts
+  };
+  // Load filter counts
   const loadFilterCounts = async () => {
     if (!isMountedRef.current) return;
 
@@ -333,7 +332,7 @@ export default function JobsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header />{' '}
+      {/* <Header /> */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
