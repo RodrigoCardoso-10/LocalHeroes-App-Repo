@@ -14,6 +14,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{}} />
       <Tabs.Screen name="jobs" options={{}} />
       <Tabs.Screen name="post" options={{}} />
+      <Tabs.Screen name="job-manager" options={{}} />
       <Tabs.Screen name="inbox" options={{}} />
       <Tabs.Screen name="about" options={{}} />
       <Tabs.Screen name="settings" options={{}} />

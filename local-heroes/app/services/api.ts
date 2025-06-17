@@ -1,13 +1,15 @@
+// local-heroes/services/api.ts
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // Dynamically set baseURL for API
-let baseURL = 'http://127.0.0.1:3001';
+let baseURL = 'http://127.0.0.1:3001'; // Default for local machine
 if (Platform.OS === 'android') {
-  baseURL = 'http://10.0.2.2:3001'; // Android emulator
+  baseURL = 'http://10.0.2.2:3001'; // Android emulator's localhost loopback
 }
 // For physical devices, use your machine's LAN IP, e.g. 'http://192.168.1.100:3001'
+// You should consider using process.env.EXPO_PUBLIC_API_BASE_URL from a .env file for easier management.
 
 // Create an axios instance with default configuration
 const api = axios.create({
@@ -77,6 +79,28 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Define your Job interface here for consistency across services
+// This should match the structure of job objects returned by your backend API
+interface Job {
+  _id: string;
+  title: string;
+  description: string;
+  location?: string;
+  price: number;
+  dueDate?: string;
+  category?: string;
+  tags?: string[];
+  experienceLevel?: string;
+  status: 'open' | 'pending' | 'closed' | 'active' | 'completed' | 'cancelled';
+  // Assuming these fields are present for filtering. Adjust names if different in your backend.
+  posterId: string; // The ID of the user who created/posted this job
+  assignedTo?: string; // The ID of the user who has accepted/is working on this job
+  applicants?: string[]; // Array of user IDs who have applied
+  createdAt: string; // Add timestamp if available
+  updatedAt: string; // Add timestamp if available
+  // ... any other relevant fields from your backend's Job model
+}
 
 // Authentication services
 export const authService = {
@@ -287,7 +311,11 @@ export const authService = {
     experienceLevel?: string;
     page?: number;
     limit?: number;
-  }) => {
+    // Added specific filters for user-related tasks based on backend
+    postedBy?: string; // Filter by job poster (matches backend parameter name)
+    assignedTo?: string; // Filter by user assigned to the job (active jobs)
+    applicantId?: string; // Filter by user who applied (if backend supports this)
+  }): Promise<Job[]> => { // Changed return type to Job[]
     try {
       const params = new URLSearchParams();
 
@@ -464,6 +492,32 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to delete notification' };
+    }
+  },
+
+  // NEW: Method to fetch jobs posted by the current user
+  async getMyPostedJobs(userId: string): Promise<Job[]> {
+    try {
+      // Use getTasks with a filter for the postedBy parameter (matches backend)
+      // Backend controller expects 'postedBy' not 'posterId'
+      const response = await this.getTasks({ postedBy: userId });
+      return response; // getTasks already returns the data directly
+    } catch (error: any) {
+      // Re-throw the error as getTasks (and its internal Axios call) already handles logging/throwing
+      throw error;
+    }
+  },
+
+  // NEW: Method to fetch jobs actively accepted/assigned to the current user
+  async getMyActiveJobs(userId: string): Promise<Job[]> {
+    try {
+      // Use getTasks with a filter for the assignedTo field and 'active' status
+      // This assumes 'assignedTo' holds the user ID of the person working on the job
+      const response = await this.getTasks({ assignedTo: userId, status: 'active' });
+      return response;
+    } catch (error: any) {
+      // Re-throw the error
+      throw error;
     }
   },
 };

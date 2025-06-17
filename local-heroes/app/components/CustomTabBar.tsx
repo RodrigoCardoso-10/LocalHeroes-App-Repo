@@ -15,6 +15,7 @@ const TAB_ICONS_MAP: Record<string, TabIcon> = {
   inbox: { name: 'envelope', label: 'Inbox' },
   about: { name: 'info-circle', label: 'About Us' },
   settings: { name: 'gear', label: 'Settings' },
+  'job-manager': { name: 'briefcase', label: 'Manager' },
 };
 
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
@@ -75,6 +76,7 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       <View style={styles.tabBar}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
+          // Dynamically get icon and label based on route.name
           const icon = TAB_ICONS_MAP[route.name] || { name: 'home', label: 'Unknown' };
           const animatedStyle = {
             transform: [{ scale: animatedValues[index].scale }, { translateY: animatedValues[index].translateY }],
@@ -86,22 +88,24 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
               onPress={() => navigation.navigate(route.name)}
-              style={index === 2 ? styles.centerTabButton : styles.tabButton}
+              // Assuming 'post' is always the center tab, which is index 2
+              style={route.name === 'post' ? styles.centerTabButton : styles.tabButton}
               activeOpacity={0.8}
             >
               <Animated.View
                 style={[
                   styles.tabIconContainer,
                   isFocused && styles.activeTabCircle,
-                  index === 2 && styles.centerTabCircle,
+                  route.name === 'post' && styles.centerTabCircle, // Apply centerTabCircle based on route name
                   animatedStyle,
                 ]}
               >
                 <FontAwesome
+                  // Adjust size based on if it's the 'post' tab
                   name={icon.name}
-                  size={index === 2 ? 28 : 24}
-                  color={isFocused ? '#fff' : '#fff'}
-                  style={isFocused ? { color: '#2BB6A3' } : {}}
+                  size={route.name === 'post' ? 28 : 24}
+                  color={isFocused ? '#fff' : '#fff'} // Icon color is white for both active and inactive
+                  style={isFocused ? { color: '#2BB6A A3' } : {}} // Active icon color
                 />
               </Animated.View>
               <Animated.Text style={[styles.tabLabel, { opacity: animatedValues[index].opacity }]}>
