@@ -1,15 +1,20 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Tabs } from 'expo-router';
+import { Stack, Tabs } from 'expo-router';
 import React from 'react';
 import CustomTabBar from './components/CustomTabBar';
 import { AuthProvider } from './context/AuthContext';
-// import Header from './components/Header'; // Removed as it's only needed in specific screens or via individual options
 
-export default function TabLayout() {
+export default function RootLayout() {
   return (
     <AuthProvider>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="jobs/[id]" options={{ headerShown: false }} />
+      </Stack>
       <Tabs tabBar={(props: BottomTabBarProps) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
-        {/* No need to manually list screens */}
+        <Tabs.Screen name="index" options={{ title: 'Home' }} />
+        <Tabs.Screen name="jobs" options={{ title: 'Jobs' }} />
+        <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
       </Tabs>
     </AuthProvider>
   );
