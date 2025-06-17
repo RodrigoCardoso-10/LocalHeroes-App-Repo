@@ -10,6 +10,7 @@ export default function TabLayout() {
         headerShown: false,
       }}
     >
+      {' '}
       <Tabs.Screen name="index" options={{}} />
       <Tabs.Screen name="jobs" options={{}} />
       <Tabs.Screen name="post" options={{}} />

@@ -380,6 +380,25 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to delete task' };
     }
   },
+  // Apply for task
+  applyForTask: async (id: string) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/apply`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to apply for task' };
+    }
+  },
+
+  // Accept applicant (for job posters)
+  acceptApplicant: async (id: string, applicantId: string) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/accept-applicant`, { applicantId });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to accept applicant' };
+    }
+  },
 
   // Accept task
   acceptTask: async (id: string) => {
@@ -408,6 +427,43 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to cancel task' };
+    }
+  },
+
+  // Notifications API methods
+  getNotifications: async (limit = 50, offset = 0) => {
+    try {
+      const response = await api.get(`/notifications?limit=${limit}&offset=${offset}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch notifications' };
+    }
+  },
+
+  markNotificationAsRead: async (id: string) => {
+    try {
+      const response = await api.patch(`/notifications/${id}/read`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to mark notification as read' };
+    }
+  },
+
+  markAllNotificationsAsRead: async () => {
+    try {
+      const response = await api.patch('/notifications/mark-all-read');
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to mark all notifications as read' };
+    }
+  },
+
+  deleteNotification: async (id: string) => {
+    try {
+      const response = await api.delete(`/notifications/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to delete notification' };
     }
   },
 };

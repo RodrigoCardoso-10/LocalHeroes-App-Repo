@@ -56,13 +56,12 @@ export default function JobDetailScreen() {
       setRefreshing(false);
     }
   }, [id]);
-
   const handleApply = async () => {
     if (!job) return;
 
     try {
       setApplying(true);
-      await authService.acceptTask(job._id);
+      await authService.applyForTask(job._id);
       Alert.alert(
         'Application Sent!',
         "Your application has been sent to the job poster. They will contact you if you're selected.",
