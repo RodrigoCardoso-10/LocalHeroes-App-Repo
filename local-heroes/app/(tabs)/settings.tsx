@@ -52,7 +52,7 @@ export default function SettingsScreen() {
       title: 'Customer Support',
       subtitle: '24/7 Customer team to help you',
       icon: <MaterialIcons name="support-agent" size={24} color="#0ca678" />,
-      href: '/support',
+      href: '/customer-support',
     },
     {
       id: 'payment',
@@ -91,7 +91,11 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         {/* Other menu items */}
         {menuItems.slice(1).map((item) => (
-          <TouchableOpacity style={styles.menuItem} key={item.id}>
+          <TouchableOpacity 
+            style={styles.menuItem} 
+            key={item.id}
+            onPress={() => router.navigate(item.href as any)}
+          >
             <View style={styles.iconContainer}>{item.icon}</View>
             <View style={styles.menuItemText}>
               <Text style={styles.menuItemTitle}>{item.title}</Text>
