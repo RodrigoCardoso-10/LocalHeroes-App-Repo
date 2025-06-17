@@ -233,24 +233,47 @@ export const authService = {
     } catch (error: any) {
       throw error.response?.data || { message: 'Authentication check failed' };
     }
-  },
-  // Update user profile
+  }, // Update user profile
   updateProfile: async (profileData: {
-    firstName: string;
-    lastName: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
     phone?: string;
     address?: string;
     bio?: string;
+    skills?: string[];
+    profilePicture?: string;
   }) => {
     try {
-      const response = await api.put('/users/profile', profileData);
+      const response = await api.patch('/users/profile', profileData);
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Profile update failed' };
     }
   },
 
+  // Upload profile picture
+  uploadProfilePicture: async (imageUri: string, fileName: string = 'profile.jpg') => {
+    try {
+      const formData = new FormData();
+      formData.append('profilePicture', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: fileName,
+      } as any);
+
+      const response = await api.post('/users/profile-picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Profile picture upload failed' };
+    }
+  },
   // Tasks/Jobs API methods
+
   // Get all tasks with filtering
   getTasks: async (filters?: {
     search?: string;
@@ -261,6 +284,7 @@ export const authService = {
     status?: string;
     datePosted?: string;
     tags?: string[];
+    experienceLevel?: string;
     page?: number;
     limit?: number;
   }) => {
@@ -283,6 +307,16 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to fetch tasks' };
+    }
+  },
+
+  // Get filter counts
+  getFilterCounts: async () => {
+    try {
+      const response = await api.get('/tasks/filter-counts');
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch filter counts' };
     }
   },
 
@@ -346,6 +380,25 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to delete task' };
     }
   },
+  // Apply for task
+  applyForTask: async (id: string) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/apply`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to apply for task' };
+    }
+  },
+
+  // Accept applicant (for job posters)
+  acceptApplicant: async (id: string, applicantId: string) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/accept-applicant`, { applicantId });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to accept applicant' };
+    }
+  },
 
   // Accept task
   acceptTask: async (id: string) => {
@@ -374,6 +427,43 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to cancel task' };
+    }
+  },
+
+  // Notifications API methods
+  getNotifications: async (limit = 50, offset = 0) => {
+    try {
+      const response = await api.get(`/notifications?limit=${limit}&offset=${offset}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch notifications' };
+    }
+  },
+
+  markNotificationAsRead: async (id: string) => {
+    try {
+      const response = await api.patch(`/notifications/${id}/read`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to mark notification as read' };
+    }
+  },
+
+  markAllNotificationsAsRead: async () => {
+    try {
+      const response = await api.patch('/notifications/mark-all-read');
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to mark all notifications as read' };
+    }
+  },
+
+  deleteNotification: async (id: string) => {
+    try {
+      const response = await api.delete(`/notifications/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to delete notification' };
     }
   },
 };

@@ -3,15 +3,18 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import CustomTabBar from '../components/CustomTabBar';
+import Header from '../components/Header';
 
 export default function TabLayout() {
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: () => <Header />,
       }}
     >
+      {' '}
       <Tabs.Screen name="index" options={{}} />
       <Tabs.Screen name="jobs" options={{}} />
       <Tabs.Screen name="post" options={{}} />

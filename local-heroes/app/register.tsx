@@ -1,15 +1,14 @@
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
+    ActivityIndicator,
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity
 } from 'react-native';
 import { useAuth } from './context/AuthContext';
 
@@ -86,17 +85,6 @@ const RegisterScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>LocalHero</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={() => router.push('/login')}>
-            <Text style={styles.headerButtonText}>Login</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/register')} style={[styles.button, styles.registerButton]}>
-            <Text style={styles.buttonText}>Register</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
       <ScrollView contentContainerStyle={styles.formContainer}>
         <Text style={styles.title}>Register</Text>
 
@@ -143,27 +131,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F0F8F7',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
-  },
-  logo: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerButtonText: {
-    fontSize: 16,
-    marginHorizontal: 10,
   },
   formContainer: {
     justifyContent: 'center',

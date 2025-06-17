@@ -1,11 +1,11 @@
 import React from 'react';
-import { Text, View, StyleSheet, Image, ScrollView } from 'react-native';
-import Header from '../components/Header';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+// import Header from '../components/Header';
 
 export default function AboutScreen() {
     return (
         <View style={styles.container}>
-            <Header />
+            {/* <Header /> */}
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>About LocalHeroes</Text>
                 <Text style={styles.description}>

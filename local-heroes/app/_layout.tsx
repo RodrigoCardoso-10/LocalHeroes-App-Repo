@@ -1,6 +1,6 @@
-import { Tabs } from 'expo-router';
-import CustomTabBar from './components/CustomTabBar';
+import React from 'react';
 import { AuthProvider } from './context/AuthContext';
+// import Header from './components/Header'; // Removed as it's only needed in specific screens or via individual options
 
 export default function TabLayout() {
   return (
