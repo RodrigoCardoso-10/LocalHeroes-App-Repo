@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -131,20 +132,19 @@ export default function InboxScreen() {
   const onRefresh = () => {
     loadNotifications(true);
   };
-
   if (loading && !refreshing) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Header />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#2A9D8F" />
           <Text style={styles.loadingText}>Loading notifications...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Header />
       <View style={styles.headerContainer}>
         <Text style={styles.title}>Inbox</Text>
@@ -198,7 +198,7 @@ export default function InboxScreen() {
           </Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

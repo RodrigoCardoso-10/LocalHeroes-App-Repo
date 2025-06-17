@@ -13,7 +13,6 @@ const TAB_ICONS_MAP: Record<string, TabIcon> = {
   jobs: { name: 'briefcase', label: 'Jobs' },
   post: { name: 'plus', label: 'Post' },
   inbox: { name: 'envelope', label: 'Inbox' },
-  about: { name: 'info-circle', label: 'About Us' },
   settings: { name: 'gear', label: 'Settings' },
 };
 
