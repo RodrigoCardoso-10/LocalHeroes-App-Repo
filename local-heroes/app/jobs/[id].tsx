@@ -33,6 +33,9 @@ export default function JobDetailScreen() {
   const loadJobDetails = async () => {
     try {
       setLoading(true);
+      console.log('Loading job details for ID:', id);
+      console.log('ID type:', typeof id);
+      console.log('ID value:', JSON.stringify(id));
       const response = await authService.getTask(id as string);
       setJob(response);
     } catch (error: any) {
@@ -256,7 +259,7 @@ export default function JobDetailScreen() {
             <Text style={styles.priceLabel}>Payment</Text>
             <Text style={styles.price}>€{job.price}</Text>
           </View>
-        </View>{' '}
+        </View>
         {/* Experience Level */}
         {job.experienceLevel && (
           <View style={styles.section}>

@@ -1,7 +1,6 @@
-import { Stack } from 'expo-router';
 import React from 'react';
+import { Stack } from 'expo-router';
 import { AuthProvider } from './context/AuthContext';
-// import Header from './components/Header'; // Removed as it's only needed in specific screens or via individual options
 
 export default function RootLayout() {
   return (

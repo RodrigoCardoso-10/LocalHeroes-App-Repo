@@ -1,10 +1,11 @@
 // app/jobs/index.tsx
+import React from 'react';
+import { View, Text, SafeAreaView } from 'react-native';
+
 export default function JobsScreen() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>Jobs List / Search Page</Text>
-    </View>
+    </SafeAreaView>
   );
 }
-import { View, Text } from 'react-native';
-import { useEffect } from 'react'; 

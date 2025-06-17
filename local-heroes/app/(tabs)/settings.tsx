@@ -66,7 +66,16 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <MaterialCommunityIcons name="toolbox" size={24} color="white" />
+          <Text style={styles.headerTitle}>LocalHero</Text>
+        </View>
+        <TouchableOpacity style={styles.settingsIcon}>
+          <Ionicons name="settings-outline" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
       {/* Settings Items */}
       <View style={styles.content}>
         {/* Edit Profile Button - Direct navigation to profile page */}
