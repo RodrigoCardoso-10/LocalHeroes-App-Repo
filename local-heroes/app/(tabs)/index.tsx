@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import JobCard from '../components/JobCard';
 import { useAuth } from '../context/AuthContext';
 
 const HomePage = () => {
@@ -16,57 +17,57 @@ const HomePage = () => {
     }
   };
 
-  // Sample job data based on your Figma design
+  // Sample job data based on the Figma design
   const jobData = [
     {
       id: 1,
-      title: 'Event Setup',
-      company: 'Bank Company Name Ltd',
+      title: 'Financial Security Analyst',
+      company: 'Tech Solutions Inc.',
       location: 'New York',
       type: 'Full-time',
-      salary: '$70,000',
-      //logo: require('./assets/bank-logo.png'), // You'll need to add actual logo images
-      color: '#E8F5E8', // Light green background
+      salary: '$70k - $90k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F0F8F7',
     },
     {
       id: 2,
       title: 'Software Quality Facilitator',
-      company: 'Tech Company',
+      company: 'Innovate Corp.',
       location: 'Remote',
-      type: 'Contract',
-      salary: '$65,000',
-      //logo: require('./assets/tech-logo.png'),
-      color: '#FFF5E6', // Light orange background
+      type: 'Part-time',
+      salary: '$60k - $80k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F7F0F8',
     },
     {
       id: 3,
       title: 'Internal Integration Planner',
-      company: 'Corp Solutions',
+      company: 'Global Ventures',
       location: 'San Francisco',
       type: 'Full-time',
-      salary: '$80,000',
-      //logo: require('./assets/corp-logo.png'),
-      color: '#F0F8FF', // Light blue background
+      salary: '$80k - $100k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F8F7F0',
     },
     {
       id: 4,
       title: 'District Intranet Coordinator',
-      company: 'Network Systems',
+      company: 'City Connect',
       location: 'Chicago',
-      type: 'Part-time',
-      salary: '$45,000',
-      //logo: require('./assets/network-logo.png'),
-      color: '#FFF0F5', // Light pink background
+      type: 'Contract',
+      salary: '$40k - $60k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F0F8F7',
     },
     {
       id: 5,
       title: 'Customer Service Facilitator',
-      company: 'Service Pro',
+      company: 'Service First',
       location: 'Austin',
       type: 'Full-time',
-      salary: '$55,000',
-      //logo: require('./assets/service-logo.png'),
-      color: '#F5F0FF', // Light purple background
+      salary: '$50k - $70k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F7F0F8',
     }
   ];
 
@@ -80,42 +81,11 @@ const HomePage = () => {
 
         <View style={styles.jobCardsContainer}>
           {jobData.map((job) => (
-            <TouchableOpacity
+            <JobCard
               key={job.id}
-              style={[styles.jobCard, { backgroundColor: job.color }]}
+              job={job}
               onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: job.id } })}
-            >
-              <View style={styles.jobCardHeader}>
-                <View style={styles.companyLogoContainer}>
-                  <View style={styles.logoPlaceholder}>
-                    {/* Replace with actual Image component when you have logos */}
-                    <Text style={styles.logoText}>{job.company.charAt(0)}</Text>
-                  </View>
-                </View>
-                <View style={styles.jobTypeContainer}>
-                  <Text style={styles.jobType}>{job.type}</Text>
-                </View>
-              </View>
-
-              <View style={styles.jobCardContent}>
-                <Text style={styles.jobTitle}>{job.title}</Text>
-                <Text style={styles.companyName}>{job.company}</Text>
-                
-                <View style={styles.jobDetailsRow}>
-                  <View style={styles.locationContainer}>
-                    <Text style={styles.locationIcon}>📍</Text>
-                    <Text style={styles.locationText}>{job.location}</Text>
-                  </View>
-                  <Text style={styles.salaryText}>{job.salary}</Text>
-                </View>
-              </View>
-
-              <View style={styles.jobCardFooter}>
-                <TouchableOpacity style={styles.applyButton}>
-                  <Text style={styles.applyButtonText}>Apply Now</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
+            />
           ))}
         </View>
 

@@ -1,7 +1,7 @@
 import { FontAwesome } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Platform, StyleSheet, TouchableOpacity, View, Text } from 'react-native';
+import { Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface TabIcon {
   name: 'home' | 'briefcase' | 'plus' | 'envelope' | 'user' | 'gear' | 'info-circle';
@@ -29,8 +29,9 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   useEffect(() => {
     state.routes.forEach((route, index) => {
       const isActive = state.index === index;
-      
-      Animated.parallel([
+      let animations = [];
+
+      animations.push(
         Animated.spring(animatedValues[index].scale, {
           toValue: isActive ? 1.2 : 1,
           useNativeDriver: true,

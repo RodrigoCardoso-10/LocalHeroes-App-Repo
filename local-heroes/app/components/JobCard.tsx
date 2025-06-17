@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface JobCardProps {
   job: {
@@ -9,7 +9,7 @@ interface JobCardProps {
     location: string;
     type: string;
     salary: string;
-    logo: any; // Consider a more specific type if possible
+    logo: any; // You'll need to add actual logo images
     color: string;
   };
   onPress: () => void;
@@ -26,7 +26,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
         <View style={styles.companyLogoContainer}>
           <View style={styles.logoPlaceholder}>
             {/* Replace with actual Image component when you have logos */}
-            <Text style={styles.logoText}>{job.company.charAt(0)}</Text>
+            <Image source={job.logo} style={styles.companyLogo} />
           </View>
         </View>
         <View style={styles.jobTypeContainer}>
@@ -95,6 +95,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  companyLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
   },
   logoText: {
     fontSize: 20,

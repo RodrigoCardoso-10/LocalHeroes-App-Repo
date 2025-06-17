@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image as RNImage, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Images } from '../constants/Images';
 
 export default function Header() {
   const router = useRouter();
@@ -9,7 +10,7 @@ export default function Header() {
   return (
     <View style={styles.headerContainer}>
       <TouchableOpacity style={styles.headerLeft} onPress={() => router.push('/')}>
-        <Image source={Images.logo} style={styles.headerLogo} />
+        <RNImage source={Images.logo} style={styles.headerLogo} />
         <Text style={styles.headerTitle}>LocalHeroes</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => router.push('/settings')}>
@@ -36,5 +37,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  headerLogo: {
+    width: 40,
+    height: 40,
+    marginRight: 10,
   },
 }); 

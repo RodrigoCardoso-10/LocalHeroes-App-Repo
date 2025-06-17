@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 // import Header from '../components/Header'; // Removed as header is handled by _layout.tsx
 import Slider from '@react-native-community/slider';
+import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 import { Task, TaskFilters, TasksResponse } from '../types/task';
 
@@ -330,7 +331,7 @@ export default function JobsScreen() {
     }
   };
 
-  const { isLoggedIn } = useAuth();
+  const { user } = useAuth();
 
   return (
     <View style={styles.container}>
