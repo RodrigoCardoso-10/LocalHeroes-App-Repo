@@ -12,12 +12,13 @@ export default function TabLayout() {
         header: () => <Header />,
       }}
     >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="jobs" />
-      <Tabs.Screen name="post" />
-      <Tabs.Screen name="inbox" />
-      <Tabs.Screen name="about" />
-      <Tabs.Screen name="settings" />
+      {' '}
+      <Tabs.Screen name="index" options={{}} />
+      <Tabs.Screen name="jobs" options={{}} />
+      <Tabs.Screen name="post" options={{}} />
+      <Tabs.Screen name="inbox" options={{}} />
+      <Tabs.Screen name="about" options={{}} />
+      <Tabs.Screen name="settings" options={{}} />
     </Tabs>
   );
 }
