@@ -811,11 +811,9 @@ export default function JobsScreen() {
                     <Text style={styles.taskTitle}>{task.title}</Text>
                     <Text style={styles.taskPrice}>€{task.price}</Text>
                   </View>
-
                   <Text style={styles.taskDescription} numberOfLines={2}>
                     {task.description}
                   </Text>
-
                   <View style={styles.taskMeta}>
                     {task.location && (
                       <View style={styles.taskMetaItem}>
@@ -830,7 +828,6 @@ export default function JobsScreen() {
                       </View>
                     )}
                   </View>
-
                   <View style={styles.taskFooter}>
                     <View style={styles.taskPoster}>
                       <View style={styles.posterAvatar}>
@@ -847,24 +844,6 @@ export default function JobsScreen() {
                       </Text>
                     </View>
                   </View>
-                )}
-                {/* Apply Now Button */}
-                <TouchableOpacity
-                  style={[styles.applyButton, { marginTop: 10 }]}
-                  onPress={async () => {
-                    try {
-                      await authService.applyForTask(task._id);
-                      Alert.alert('Application Sent', 'You have applied for this job.');
-                    } catch (error: any) {
-                      Alert.alert('Error', error.message || 'Failed to apply for this job.');
-                    }
-                  }}
-                >
-                  <Text style={styles.applyButtonText}>Apply Now</Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
-            ))}
-
                   {task.tags && task.tags.length > 0 && (
                     <View style={styles.taskTags}>
                       {task.tags.slice(0, 3).map((tag, index) => (
@@ -875,6 +854,20 @@ export default function JobsScreen() {
                       {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
                     </View>
                   )}
+                  {/* Apply Now Button */}
+                  <TouchableOpacity
+                    style={[styles.applyButton, { marginTop: 10 }]}
+                    onPress={async () => {
+                      try {
+                        await authService.applyForTask(task._id);
+                        Alert.alert('Application Sent', 'You have applied for this job.');
+                      } catch (error: any) {
+                        Alert.alert('Error', error.message || 'Failed to apply for this job.');
+                      }
+                    }}
+                  >
+                    <Text style={styles.applyButtonText}>Apply Now</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
               ))}
 
