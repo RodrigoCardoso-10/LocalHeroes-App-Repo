@@ -61,6 +61,13 @@ export default function SettingsScreen() {
       icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#0ca678" />,
       href: '/payment-slips',
     },
+    {
+      id: 'about',
+      title: 'About Us',
+      subtitle: 'Learn more about LocalHeroes',
+      icon: <MaterialIcons name="info-outline" size={24} color="#0ca678" />,
+      href: '/about',
+    },
   ];
 
   return (
