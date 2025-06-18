@@ -2,12 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+interface LocationObject {
+  point?: any;
+  address?: string;
+  _id?: string;
+}
+
 interface JobCardProps {
   job: {
     _id: string;
     title: string;
     description: string;
-    location?: string;
+    location?: string | LocationObject;
     price: number;
     category?: string;
     tags?: string[];
@@ -68,7 +74,16 @@ const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
         {job.location && (
           <View style={styles.metaItem}>
             <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.metaText}>{job.location}</Text>
+            <Text style={styles.metaText}>
+              {typeof job.location === "string"
+                ? job.location
+                : job.location &&
+                  typeof job.location === "object" &&
+                  "address" in job.location &&
+                  job.location.address
+                ? job.location.address
+                : "Unknown location"}
+            </Text>
           </View>
         )}
         {job.category && (

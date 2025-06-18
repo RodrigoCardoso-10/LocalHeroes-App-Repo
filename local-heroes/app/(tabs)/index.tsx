@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 import Header from "../components/Header";
 import JobCard from "../components/JobCard";
 import { Images } from "../constants/Images";
@@ -38,11 +39,15 @@ export default function HomeScreen() {
     if (searchQuery.trim()) {
       router.push({
         pathname: "/(tabs)/jobs",
-        params: { search: searchQuery.trim() },
+        params: { search: searchQuery.trim() }
       });
     } else {
       router.push("/(tabs)/jobs");
     }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
   };
 
   // Fetch recent jobs
@@ -130,18 +135,27 @@ export default function HomeScreen() {
             onSubmitEditing={handleSearch}
             returnKeyType="search"
           />
-          <TouchableOpacity
-            style={styles.searchButton}
-            onPress={handleSearch}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.searchButtonText}>🔍</Text>
-          </TouchableOpacity>
+          {searchQuery ? (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={clearSearch}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.searchIcon}
+              onPress={handleSearch}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="search" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
         </View>
-        {/* Add more categories as needed */}
+
         <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.recentJobsHeader}>
@@ -149,9 +163,7 @@ export default function HomeScreen() {
             <Text style={styles.recentJobsSubtitle}>
               {loading
                 ? "Loading..."
-                : `Showing ${
-                    recentJobs.length > 0 ? recentJobs.length : jobData.length
-                  } recent jobs`}
+                : `Showing ${recentJobs.length > 0 ? recentJobs.length : jobData.length} recent jobs`}
             </Text>
           </View>
 
@@ -207,9 +219,12 @@ export default function HomeScreen() {
               style={styles.promoImage}
               resizeMode="cover"
             />
-            <Text style={styles.promoTitle}>Your chance to help someone</Text>
+            <Text style={styles.promoTitle}>
+              Your chance to help someone
+            </Text>
             <Text style={styles.promoDescription}>
-              Be the on that makes someone else's day by signing up for a job.
+              Be the on that makes someone else's day by signing up 
+              for a job.
             </Text>
             <TouchableOpacity
               style={styles.promoButton}
@@ -218,8 +233,6 @@ export default function HomeScreen() {
               <Text style={styles.promoButtonText}>Search Job</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.bottomSpace} />
         </ScrollView>
       </ScrollView>
     </SafeAreaView>
@@ -239,6 +252,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
+    position: "relative",
   },
   searchBar: {
     flex: 1,
@@ -247,21 +261,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
+    paddingRight: 45,
     fontSize: 16,
     backgroundColor: "#f9f9f9",
   },
-  searchButton: {
-    marginLeft: 8,
-    backgroundColor: "#2BB6A3",
-    borderRadius: 8,
-    width: 48,
-    height: 48,
+  searchIcon: {
+    position: "absolute",
+    right: 12,
     justifyContent: "center",
     alignItems: "center",
+    width: 24,
+    height: 24,
   },
-  searchButtonText: {
-    fontSize: 18,
-    color: "#fff",
+  clearButton: {
+    position: "absolute",
+    right: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 24,
+    height: 24,
   },
   categories: {
     flexDirection: "row",
@@ -322,14 +340,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  bottomSpace: {
-    height: 80,
+    paddingBottom: 24,
   },
   recentJobsHeader: {
     marginBottom: 20,

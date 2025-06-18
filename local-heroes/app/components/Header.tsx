@@ -15,7 +15,7 @@ export default function Header() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.headerTitle}>LocalHero</Text>
+        <Text style={styles.headerTitle}>LocalHeroes</Text>
       </TouchableOpacity>
       <TouchableOpacity 
         style={styles.settingsIcon}
