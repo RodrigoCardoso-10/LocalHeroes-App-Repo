@@ -63,12 +63,10 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         <View style={styles.wave} />
       </View>
       <View style={styles.tabBar}>
-        {/* FIX #3 (THE MAIN CRASH): Filter out any undefined routes before mapping! */}
         {state.routes.filter(Boolean).map((route, index) => {
           const isFocused = state.index === index;
           const icon = TAB_ICONS[index];
 
-          // Safety check in case there are more routes than icons
           if (!icon) return null;
 
           const animatedStyle = {
@@ -87,23 +85,42 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               style={index === 2 ? styles.centerTabButton : styles.tabButton}
               activeOpacity={0.8}
             >
-              <Animated.View
+              {isFocused ? (
+                <Animated.View
+                  style={[
+                    styles.tabIconContainer,
+                    styles.activeTabCircle,
+                    index === 2 && styles.centerTabCircle,
+                    animatedStyle,
+                  ]}
+                >
+                  <FontAwesome
+                    name={icon.name}
+                    size={index === 2 ? 28 : 24}
+                    color="#fff"
+                  />
+                </Animated.View>
+              ) : (
+                <Animated.View
+                  style={[
+                    styles.tabIconContainer,
+                    index === 2 && styles.centerTabCircle,
+                    animatedStyle,
+                  ]}
+                >
+                  <FontAwesome
+                    name={icon.name}
+                    size={index === 2 ? 28 : 24}
+                    color="#fff"
+                  />
+                </Animated.View>
+              )}
+              <Animated.Text 
                 style={[
-                  styles.tabIconContainer,
-                  isFocused && styles.activeTabCircle,
-                  index === 2 && styles.centerTabCircle,
-                  animatedStyle,
+                  styles.tabLabel, 
+                  { opacity: animatedValues[index].opacity }
                 ]}
               >
-                <FontAwesome
-                  name={icon.name}
-                  size={index === 2 ? 28 : 24}
-                  color={isFocused ? '#fff' : '#fff'}
-                  style={isFocused ? { color: '#2BB6A3' } : {}}
-                />
-              </Animated.View>
-              {/* Note: I changed Animated.Text to Text because it wasn't defined. If you need the label to animate, you need to create it with Animated.createAnimatedComponent */}
-              <Animated.Text style={[styles.tabLabel, { opacity: animatedValues[index].opacity }]}>
                 {icon.label}
               </Animated.Text>
             </TouchableOpacity>
@@ -114,8 +131,6 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
-
-// Your styles remain the same...
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',

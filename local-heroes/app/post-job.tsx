@@ -119,88 +119,86 @@ export default function PostJobScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Post a Job</Text>
-          <Text style={styles.subtitle}>Nish dis faucibus pison lacus tristique</Text>
-          <PlaceholderInput
-            label="Job Title *"
-            value={jobTitle}
-            onChangeText={setJobTitle}
-            placeholder="e.g. Garden maintenance, House cleaning..."
-          />
-          <PlaceholderInput
-            label="Category"
-            value={category}
-            onChangeText={setCategory}
-            placeholder="e.g. Gardening, Cleaning, Moving..."
-          />
-          <PlaceholderInput
-            label="Experience Level"
-            value={experienceLevel}
-            onChangeText={setExperienceLevel}
-            placeholder="e.g. No experience, Beginner, Expert..."
-          />
-          <PlaceholderInput
-            label="Contact"
-            value={contact}
-            onChangeText={setContact}
-            placeholder="Your contact information..."
-          />
-          <PlaceholderInput
-            label="Location"
-            value={location}
-            onChangeText={setLocation}
-            placeholder="e.g. Amsterdam, Utrecht..."
-          />
-          <PlaceholderInput
-            label="Payment (€) *"
-            value={payment}
-            onChangeText={setPayment}
-            keyboardType="numeric"
-            placeholder="e.g. 25, 50, 100..."
-          />
-          <PlaceholderInput
-            label="Description *"
-            value={description}
-            onChangeText={setDescription}
-            multiline={true}
-            placeholder="Describe the job in detail..."
-          />
-          <PlaceholderInput
-            label="Main Tasks"
-            value={mainTasks}
-            onChangeText={setMainTasks}
-            multiline={true}
-            placeholder="List the main tasks to be completed..."
-          />
-          <PlaceholderInput
-            label="Minimum Requirements"
-            value={minimumRequirements}
-            onChangeText={setMinimumRequirements}
-            multiline={true}
-            placeholder="Specify any requirements or qualifications..."
-          />
-          <PlaceholderInput
-            label="Tags (comma separated)"
-            value={tags}
-            onChangeText={setTags}
-            placeholder="e.g. urgent, weekend, outdoor..."
-          />
-          <TouchableOpacity
-            style={[styles.postButton, isLoading && styles.postButtonDisabled]}
-            onPress={handlePostJob}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.postButtonText}>Post Job</Text>
-            )}
-          </TouchableOpacity>
-          <Text style={styles.noteText}>* Required fields. Your job will be visible to all users once posted.</Text>
-        </View>
-      </ScrollView>
+      <View style={styles.formContainer}>
+        <Text style={styles.title}>Post a Job</Text>
+        <Text style={styles.subtitle}>Nish dis faucibus pison lacus tristique</Text>
+        <PlaceholderInput
+          label="Job Title *"
+          value={jobTitle}
+          onChangeText={setJobTitle}
+          placeholder="e.g. Garden maintenance, House cleaning..."
+        />
+        <PlaceholderInput
+          label="Category"
+          value={category}
+          onChangeText={setCategory}
+          placeholder="e.g. Gardening, Cleaning, Moving..."
+        />
+        <PlaceholderInput
+          label="Experience Level"
+          value={experienceLevel}
+          onChangeText={setExperienceLevel}
+          placeholder="e.g. No experience, Beginner, Expert..."
+        />
+        <PlaceholderInput
+          label="Contact"
+          value={contact}
+          onChangeText={setContact}
+          placeholder="Your contact information..."
+        />
+        <PlaceholderInput
+          label="Location"
+          value={location}
+          onChangeText={setLocation}
+          placeholder="e.g. Amsterdam, Utrecht..."
+        />
+        <PlaceholderInput
+          label="Payment (€) *"
+          value={payment}
+          onChangeText={setPayment}
+          keyboardType="numeric"
+          placeholder="e.g. 25, 50, 100..."
+        />
+        <PlaceholderInput
+          label="Description *"
+          value={description}
+          onChangeText={setDescription}
+          multiline={true}
+          placeholder="Describe the job in detail..."
+        />
+        <PlaceholderInput
+          label="Main Tasks"
+          value={mainTasks}
+          onChangeText={setMainTasks}
+          multiline={true}
+          placeholder="List the main tasks to be completed..."
+        />
+        <PlaceholderInput
+          label="Minimum Requirements"
+          value={minimumRequirements}
+          onChangeText={setMinimumRequirements}
+          multiline={true}
+          placeholder="Specify any requirements or qualifications..."
+        />
+        <PlaceholderInput
+          label="Tags (comma separated)"
+          value={tags}
+          onChangeText={setTags}
+          placeholder="e.g. urgent, weekend, outdoor..."
+        />
+        <TouchableOpacity
+          style={[styles.postButton, isLoading && styles.postButtonDisabled]}
+          onPress={handlePostJob}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.postButtonText}>Post Job</Text>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.noteText}>* Required fields. Your job will be visible to all users once posted.</Text>
+      </View>
     </SafeAreaView>
   );
 }
@@ -214,72 +212,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formContainer: {
-    padding: 20,
-    backgroundColor: '#F1F7F6',
-    margin: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#D1E5E1',
-    borderStyle: 'dashed',
+    padding: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
     marginBottom: 8,
+    color: '#333',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
-    textAlign: 'center',
     marginBottom: 24,
   },
   inputContainer: {
     marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '500',
     marginBottom: 8,
+    color: '#333',
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
   },
   multilineInput: {
     minHeight: 100,
-    paddingTop: 12,
   },
   textInput: {
-    fontSize: 14,
+    padding: 12,
+    fontSize: 16,
     color: '#333',
   },
   postButton: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: '#0ca678',
+    padding: 16,
     borderRadius: 8,
-    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 24,
+    marginBottom: 24,
   },
   postButtonDisabled: {
-    backgroundColor: '#A0A0A0',
+    opacity: 0.7,
   },
   postButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
   },
   noteText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
     marginTop: 16,
-    fontStyle: 'italic',
   },
 });

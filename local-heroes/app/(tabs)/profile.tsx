@@ -13,10 +13,13 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useReviews } from '../context/ReviewsContext';
 import Header from '../components/Header';
+import Reviews from '../components/Reviews';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
+  const { reviews } = useReviews();
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -27,6 +30,11 @@ export default function ProfileScreen() {
     bio: '',
     profilePicture: '',
   });
+
+  // Calculate average rating
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length 
+    : 0;
 
   useEffect(() => {
     if (user) {
@@ -48,7 +56,11 @@ export default function ProfileScreen() {
       <StatusBar barStyle="light-content" />
       <Header />
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Profile Picture */}
         <View style={styles.profilePictureContainer}>
           <Image
@@ -59,6 +71,19 @@ export default function ProfileScreen() {
           />
           <View style={styles.nameContainer}>
             <Text style={styles.fullName}>{`${profileData.firstName} ${profileData.lastName}`}</Text>
+            <View style={styles.ratingContainer}>
+              <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= averageRating ? 'star' : star - 0.5 <= averageRating ? 'star-half' : 'star-outline'}
+                    size={20}
+                    color="#FFD700"
+                  />
+                ))}
+              </View>
+              <Text style={styles.ratingNumber}>{averageRating.toFixed(1)}</Text>
+            </View>
             <Text style={styles.emailText}>{profileData.email}</Text>
           </View>
         </View>
@@ -111,6 +136,30 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
+        {/* Reviews Section */}
+        <View style={styles.section}>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.sectionTitle}>Reviews</Text>
+          </View>
+          <View style={styles.reviewButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.reviewButton, styles.viewReviewsButton]}
+              onPress={() => router.push('/Reviews')}
+            >
+              <Text style={styles.viewReviewsText}>View All Reviews</Text>
+              <Ionicons name="arrow-forward" size={20} color="#0ca678" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.reviewButton, styles.writeReviewButton]}
+              onPress={() => router.push('/write-review')}
+            >
+              <Text style={styles.writeReviewText}>Write a Review</Text>
+              <Ionicons name="create-outline" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Bottom Space for Navigation Bar */}
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
@@ -124,7 +173,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 16,
+    paddingBottom: 32, // Extra padding at the bottom
   },
   profilePictureContainer: {
     alignItems: 'center',
@@ -145,11 +197,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginRight: 8,
+  },
+  ratingNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
   emailText: {
     fontSize: 16,
     color: '#666',
-    marginTop: 4,
   },
   editProfileButton: {
     flexDirection: 'row',
@@ -181,8 +247,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
     color: '#333',
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  ratingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 4,
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
   },
   infoRow: {
     flexDirection: 'row',
@@ -228,6 +310,35 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   bottomSpace: {
-    height: 40,
+    height: 80,
+  },
+  reviewButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  reviewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    padding: 16,
+  },
+  viewReviewsButton: {
+    backgroundColor: '#f8f9fa',
+  },
+  writeReviewButton: {
+    backgroundColor: '#0ca678',
+  },
+  viewReviewsText: {
+    fontSize: 16,
+    color: '#0ca678',
+    fontWeight: '500',
+  },
+  writeReviewText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '500',
   },
 }); 

@@ -1,219 +1,114 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React from 'react';
+import { SafeAreaView, StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import Reviews from './components/Reviews';
+import { useReviews } from './context/ReviewsContext';
 
-type Review = {
-  id: number;
-  name: string;
-  title: string;
-  experience: string;
-  rating: number;
-};
+export default function ReviewsScreen() {
+  const { reviews } = useReviews();
 
-const initialReviews: Review[] = [
-  {
-    id: 1,
-    name: 'Jane Doe',
-    title: 'Helped me land my first job!',
-    experience: 'The app made it easy to browse and apply to jobs. Notifications were super helpful.',
-    rating: 5,
-  },
-  {
-    id: 2,
-    name: 'Sam Lee',
-    title: 'Good, but could improve search filters',
-    experience: 'I found several listings, but filtering by salary range would be great.',
-    rating: 4,
-  },
-];
-
-const ReviewsPage = () => {
-  const [reviews, setReviews] = useState<Review[]>(initialReviews);
-  const [name, setName] = useState('');
-  const [title, setTitle] = useState('');
-  const [experience, setExperience] = useState('');
-  const [rating, setRating] = useState(5);
-
-  const handleSubmit = () => {
-    if (!name || !title || !experience) return;
-    const newReview: Review = {
-      id: Date.now(),
-      name,
-      title,
-      experience,
-      rating,
-    };
-    setReviews([newReview, ...reviews]);
-    setName('');
-    setTitle('');
-    setExperience('');
-    setRating(5);
-  };
+  // Calculate average rating
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length 
+    : 0;
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Review the Job Listings App</Text>
-      
-      <View style={styles.form}>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Your Name:</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Enter your name"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Review Title:</Text>
-          <TextInput
-            style={styles.input}
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Enter review title"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Your Experience:</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={experience}
-            onChangeText={setExperience}
-            placeholder="Share your experience..."
-            multiline
-            numberOfLines={4}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>App Usefulness Rating:</Text>
-          <View style={styles.ratingContainer}>
-            {[5, 4, 3, 2, 1].map((star) => (
-              <Pressable
-                key={star}
-                style={[
-                  styles.ratingButton,
-                  rating === star && styles.selectedRating,
-                ]}
-                onPress={() => setRating(star)}
-              >
-                <Text style={styles.ratingText}>
-                  {star} {star === 5 ? '(Excellent)' : star === 1 ? '(Poor)' : ''}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <Pressable style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Submit Review</Text>
-        </Pressable>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Reviews</Text>
+        <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.reviewsList}>
-        {reviews.map(review => (
-          <View key={review.id} style={styles.reviewItem}>
-            <Text style={styles.reviewTitle}>{review.title}</Text>
-            <Text style={styles.reviewMeta}>by {review.name} ({review.rating} / 5)</Text>
-            <Text style={styles.reviewText}>{review.experience}</Text>
+      <ScrollView style={styles.content}>
+        {/* Rating Summary */}
+        <View style={styles.ratingSummary}>
+          <View style={styles.ratingHeader}>
+            <Text style={styles.ratingNumber}>{averageRating.toFixed(1)}</Text>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Ionicons
+                  key={star}
+                  name={star <= Math.round(averageRating) ? 'star' : 'star-outline'}
+                  size={24}
+                  color="#FFD700"
+                />
+              ))}
+            </View>
           </View>
-        ))}
-      </View>
-    </ScrollView>
+          <Text style={styles.reviewCount}>{reviews.length} reviews</Text>
+        </View>
+
+        {/* Reviews List */}
+        <Reviews reviews={reviews} />
+      </ScrollView>
+    </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  form: {
-    marginBottom: 24,
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  ratingContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  ratingButton: {
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 4,
-    minWidth: 60,
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#000',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
-  selectedRating: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+  backButton: {
+    padding: 8,
   },
-  ratingText: {
-    fontSize: 14,
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  submitButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  reviewsList: {
-    marginTop: 24,
-  },
-  reviewItem: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  reviewTitle: {
-    fontSize: 18,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: 'white',
   },
-  reviewMeta: {
-    fontSize: 14,
-    color: '#666',
+  placeholder: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  ratingSummary: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  ratingHeader: {
+    alignItems: 'center',
     marginBottom: 8,
   },
-  reviewText: {
+  ratingNumber: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  reviewCount: {
     fontSize: 16,
-    lineHeight: 24,
+    color: '#666',
   },
 });
-
-export default ReviewsPage;
