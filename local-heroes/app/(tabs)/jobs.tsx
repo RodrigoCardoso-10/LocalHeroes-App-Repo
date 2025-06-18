@@ -7,7 +7,6 @@ import {
   Alert,
   Dimensions,
   Modal,
-  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -557,395 +556,372 @@ export default function JobsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header />
+      <ScrollView>
+        {/* View Toggle */}
+        <View style={styles.viewToggleContainer}>
+          <TouchableOpacity
+            style={[styles.viewToggleButton, viewMode === 'list' && styles.activeViewToggle]}
+            onPress={() => setViewMode('list')}
+          >
+            <Ionicons name="list" size={20} color={viewMode === 'list' ? '#fff' : '#2A9D8F'} />
+            <Text style={[styles.viewToggleText, viewMode === 'list' && styles.activeViewToggleText]}>List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.viewToggleButton, viewMode === 'map' && styles.activeViewToggle]}
+            onPress={() => setViewMode('map')}
+          >
+            <Ionicons name="map" size={20} color={viewMode === 'map' ? '#fff' : '#2A9D8F'} />
+            <Text style={[styles.viewToggleText, viewMode === 'map' && styles.activeViewToggleText]}>Map</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* View Toggle */}
-      <View style={styles.viewToggleContainer}>
-        <TouchableOpacity
-          style={[styles.viewToggleButton, viewMode === 'list' && styles.activeViewToggle]}
-          onPress={() => setViewMode('list')}
-        >
-          <Ionicons name="list" size={20} color={viewMode === 'list' ? '#fff' : '#2A9D8F'} />
-          <Text style={[styles.viewToggleText, viewMode === 'list' && styles.activeViewToggleText]}>List</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.viewToggleButton, viewMode === 'map' && styles.activeViewToggle]}
-          onPress={() => setViewMode('map')}
-        >
-          <Ionicons name="map" size={20} color={viewMode === 'map' ? '#fff' : '#2A9D8F'} />
-          <Text style={[styles.viewToggleText, viewMode === 'map' && styles.activeViewToggleText]}>Map</Text>
-        </TouchableOpacity>
-      </View>
-
-      {viewMode === 'list' ? (
-        /* List View */
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={true}
-          contentContainerStyle={styles.scrollViewContent}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#2A9D8F']}
-              tintColor="#2A9D8F"
-              title="Pull to refresh"
-              titleColor="#666"
-            />
-          }
-          onScroll={(event) => {
-            setScrollPosition(event.nativeEvent.contentOffset.y);
-          }}
-          onMomentumScrollEnd={(event) => {
-            setScrollPosition(event.nativeEvent.contentOffset.y);
-          }}
-          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Top Buttons Row */}
-          <View style={styles.topButtonsRow}>
-            {/* Filters Button */}
-            <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
-              <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
-              <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
-            </TouchableOpacity>
-            {/* Clear Filters Button */}
-            <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
-              <Ionicons name="trash-outline" size={16} color="#666" />
-              <Text style={styles.clearFiltersButtonText}>Clear</Text>
-            </TouchableOpacity>
-            {/* Post Job Button */}
-            <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
-              <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.postJobButtonText}>Post a Job</Text>
-            </TouchableOpacity>
-          </View>
-          {showFilters && (
-            <>
-              {/* Search Section */}
-              <View style={styles.searchSection}>
-                <Text style={styles.sectionTitle}>Search by Job Title</Text>
-                <View style={styles.searchInputContainer}>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Job title"
-                    value={searchText}
-                    onChangeText={setSearchText}
-                  />
-                </View>
-              </View>
-
-              {/* Location Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Location</Text>
-                <TouchableOpacity
-                  style={styles.locationSelector}
-                  onPress={() => {
-                    // Store current scroll position before showing cities
-                    setShowCities(!showCities);
-                  }}
-                >
-                  <Ionicons name="location-outline" size={16} color="#999" />
-                  <Text style={styles.locationText}>{selectedLocation ? selectedLocation : 'Choose city'}</Text>
-                  <Ionicons
-                    name={showCities ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color="#999"
-                    style={styles.chevron}
-                  />
-                </TouchableOpacity>
-
-                {/* City selection modal */}
-                <Modal
-                  visible={showCities}
-                  transparent={true}
-                  animationType="fade"
-                  onRequestClose={() => setShowCities(false)}
-                >
-                  <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCities(false)}>
-                    <View style={styles.modalContainer}>
-                      <View style={styles.citiesDropdownContainer}>
-                        <View style={styles.citiesDropdownHeader}>
-                          <Text style={styles.citiesDropdownTitle}>Select a city</Text>
-                          <TouchableOpacity onPress={() => setShowCities(false)}>
-                            <Ionicons name="close" size={24} color="#333" />
-                          </TouchableOpacity>
-                        </View>
-                        <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
-                          {dutchCities.map((city, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.cityItem}
-                              onPress={() => {
-                                setSelectedLocation(city);
-                                setShowCities(false);
-                              }}
-                            >
-                              <Text style={[styles.cityText, selectedLocation === city && styles.selectedCityText]}>
-                                {city}
-                              </Text>
-                              {selectedLocation === city && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                </Modal>
-              </View>
-
-              {/* Category Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Category</Text>
-                {categories.map((category, index) => (
-                  <CustomCheckbox
-                    key={index}
-                    checked={selectedCategories.includes(category.name)}
-                    onPress={() => toggleCategory(category.name)}
-                    label={category.name}
-                    count={category.count}
-                  />
-                ))}
-                <TouchableOpacity style={styles.showMoreButton}>
-                  <Text style={styles.showMoreText}>Show More</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Experience Level Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Experience Level</Text>
-                {experienceLevels.map((level, index) => (
-                  <CustomCheckbox
-                    key={index}
-                    checked={selectedExperience.includes(level.name)}
-                    onPress={() => toggleExperience(level.name)}
-                    label={level.name}
-                    count={level.count}
-                  />
-                ))}
-              </View>
-
-              {/* Date Posted Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Date Posted</Text>
-                {datePostedOptions.map((option, index) => (
-                  <CustomCheckbox
-                    key={index}
-                    checked={selectedDatePosted.includes(option.name)}
-                    onPress={() => toggleDatePosted(option.name)}
-                    label={option.name}
-                    count={option.count}
-                  />
-                ))}
-              </View>
-
-              {/* Payment Range Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Payment</Text>
-                <View style={styles.sliderContainer}>
-                  <Slider
-                    style={styles.slider}
-                    minimumValue={0}
-                    maximumValue={999}
-                    value={paymentRange[1]}
-                    onValueChange={(value: number) => setPaymentRange([0, Math.round(value)])}
-                    minimumTrackTintColor="#2A9D8F"
-                    maximumTrackTintColor="#E9ECEF"
-                    thumbTintColor="#2A9D8F"
-                  />
-                </View>
-                <View style={styles.paymentRangeTextContainer}>
-                  <Text style={styles.paymentRangeText}>Payment: 0€ - {paymentRange[1]}€</Text>
-                  <TouchableOpacity style={styles.applyButton}>
-                    <Text style={styles.applyButtonText}>Apply</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Tags Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Tags</Text>
-                <View style={styles.tagsContainer}>
-                  {tags.map((tag, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[styles.tagButton, selectedTags.includes(tag) && styles.tagButtonSelected]}
-                      onPress={() => toggleTag(tag)}
-                    >
-                      <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextSelected]}>{tag}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </>
-          )}
-          {/* Results Count */}
-          <View style={styles.resultsContainer}>
-            <Text style={styles.resultsText}>
-              {loading ? 'Loading...' : `Showing 1-${Math.min(tasks.length, totalResults)} of ${totalResults} results`}
-            </Text>
-            <TouchableOpacity style={styles.sortButton}>
-              <Text style={styles.sortButtonText}>Sort by latest</Text>
-              <Ionicons name="chevron-down" size={16} color="#333" />
-            </TouchableOpacity>
-          </View>
-          {/* Task Cards */}
-          {loading && tasks.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#2A9D8F" />
-              <Text style={styles.loadingText}>Loading jobs...</Text>
+        {viewMode === 'list' ? (
+          /* List View */
+          <View style={styles.scrollView}>
+            {/* Top Buttons Row */}
+            <View style={styles.topButtonsRow}>
+              {/* Filters Button */}
+              <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
+                <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
+                <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
+              </TouchableOpacity>
+              {/* Clear Filters Button */}
+              <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
+                <Ionicons name="trash-outline" size={16} color="#666" />
+                <Text style={styles.clearFiltersButtonText}>Clear</Text>
+              </TouchableOpacity>
+              {/* Post Job Button */}
+              <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
+                <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.postJobButtonText}>Post a Job</Text>
+              </TouchableOpacity>
             </View>
-          ) : tasks.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="briefcase-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyTitle}>No jobs found</Text>
-              <Text style={styles.emptySubtitle}>Try adjusting your filters or search criteria</Text>
-            </View>
-          ) : (
-            <View style={styles.tasksContainer}>
-              {tasks.map((task) => (
-                <TouchableOpacity
-                  key={task._id}
-                  style={styles.taskCard}
-                  onPress={() => router.push(`/jobs/${task._id}` as any)}
-                >
-                  <View style={styles.taskHeader}>
-                    <Text style={styles.taskTitle}>{task.title}</Text>
-                    <Text style={styles.taskPrice}>€{task.price}</Text>
+            {showFilters && (
+              <>
+                {/* Search Section */}
+                <View style={styles.searchSection}>
+                  <Text style={styles.sectionTitle}>Search by Job Title</Text>
+                  <View style={styles.searchInputContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Job title"
+                      value={searchText}
+                      onChangeText={setSearchText}
+                    />
                   </View>
-                  <Text style={styles.taskDescription} numberOfLines={2}>
-                    {task.description}
-                  </Text>
-                  <View style={styles.taskMeta}>
-                    {task.location && (
-                      <View style={styles.taskMetaItem}>
-                        <Ionicons name="location-outline" size={14} color="#666" />
-                        <Text style={styles.taskMetaText}>{task.location}</Text>
-                      </View>
-                    )}
-                    {task.category && (
-                      <View style={styles.taskMetaItem}>
-                        <Ionicons name="pricetag-outline" size={14} color="#666" />
-                        <Text style={styles.taskMetaText}>{task.category}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.taskFooter}>
-                    <View style={styles.taskPoster}>
-                      <View style={styles.posterAvatar}>
-                        <Text style={styles.posterInitial}>{task.postedBy.firstName?.charAt(0) || 'U'}</Text>
-                      </View>
-                      <Text style={styles.posterName}>
-                        {task.postedBy.firstName} {task.postedBy.lastName}
-                      </Text>
-                    </View>
+                </View>
 
-                    <View style={[styles.statusBadge, getStatusBadgeStyle(task.status)]}>
-                      <Text style={[styles.statusText, getStatusTextStyle(task.status)]}>
-                        {task.status.replace('_', ' ')}
-                      </Text>
-                    </View>
-                  </View>
-                  {task.tags && task.tags.length > 0 && (
-                    <View style={styles.taskTags}>
-                      {task.tags.slice(0, 3).map((tag, index) => (
-                        <View key={index} style={styles.taskTag}>
-                          <Text style={styles.taskTagText}>{tag}</Text>
-                        </View>
-                      ))}
-                      {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
-                    </View>
-                  )}
-                  {/* Apply Now Button */}
+                {/* Location Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Location</Text>
                   <TouchableOpacity
-                    style={[styles.applyButton, { marginTop: 10 }]}
-                    onPress={async () => {
-                      try {
-                        await authService.applyForTask(task._id);
-                        Alert.alert('Application Sent', 'You have applied for this job.');
-                      } catch (error: any) {
-                        Alert.alert('Error', error.message || 'Failed to apply for this job.');
-                      }
+                    style={styles.locationSelector}
+                    onPress={() => {
+                      // Store current scroll position before showing cities
+                      setShowCities(!showCities);
                     }}
                   >
-                    <Text style={styles.applyButtonText}>Apply Now</Text>
+                    <Ionicons name="location-outline" size={16} color="#999" />
+                    <Text style={styles.locationText}>{selectedLocation ? selectedLocation : 'Choose city'}</Text>
+                    <Ionicons
+                      name={showCities ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color="#999"
+                      style={styles.chevron}
+                    />
                   </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
 
-              {/* Load More Button */}
-              {currentPage < totalPages && (
-                <TouchableOpacity
-                  style={styles.loadMoreButton}
-                  onPress={() => loadTasks(currentPage + 1, false)}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#2A9D8F" />
-                  ) : (
-                    <Text style={styles.loadMoreText}>Load More Jobs</Text>
-                  )}
-                </TouchableOpacity>
-              )}
+                  {/* City selection modal */}
+                  <Modal
+                    visible={showCities}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowCities(false)}
+                  >
+                    <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCities(false)}>
+                      <View style={styles.modalContainer}>
+                        <View style={styles.citiesDropdownContainer}>
+                          <View style={styles.citiesDropdownHeader}>
+                            <Text style={styles.citiesDropdownTitle}>Select a city</Text>
+                            <TouchableOpacity onPress={() => setShowCities(false)}>
+                              <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                          </View>
+                          <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
+                            {dutchCities.map((city, index) => (
+                              <TouchableOpacity
+                                key={index}
+                                style={styles.cityItem}
+                                onPress={() => {
+                                  setSelectedLocation(city);
+                                  setShowCities(false);
+                                }}
+                              >
+                                <Text style={[styles.cityText, selectedLocation === city && styles.selectedCityText]}>
+                                  {city}
+                                </Text>
+                                {selectedLocation === city && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </Modal>
+                </View>
+
+                {/* Category Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Category</Text>
+                  {categories.map((category, index) => (
+                    <CustomCheckbox
+                      key={index}
+                      checked={selectedCategories.includes(category.name)}
+                      onPress={() => toggleCategory(category.name)}
+                      label={category.name}
+                      count={category.count}
+                    />
+                  ))}
+                  <TouchableOpacity style={styles.showMoreButton}>
+                    <Text style={styles.showMoreText}>Show More</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Experience Level Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Experience Level</Text>
+                  {experienceLevels.map((level, index) => (
+                    <CustomCheckbox
+                      key={index}
+                      checked={selectedExperience.includes(level.name)}
+                      onPress={() => toggleExperience(level.name)}
+                      label={level.name}
+                      count={level.count}
+                    />
+                  ))}
+                </View>
+
+                {/* Date Posted Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Date Posted</Text>
+                  {datePostedOptions.map((option, index) => (
+                    <CustomCheckbox
+                      key={index}
+                      checked={selectedDatePosted.includes(option.name)}
+                      onPress={() => toggleDatePosted(option.name)}
+                      label={option.name}
+                      count={option.count}
+                    />
+                  ))}
+                </View>
+
+                {/* Payment Range Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Payment</Text>
+                  <View style={styles.sliderContainer}>
+                    <Slider
+                      style={styles.slider}
+                      minimumValue={0}
+                      maximumValue={999}
+                      value={paymentRange[1]}
+                      onValueChange={(value: number) => setPaymentRange([0, Math.round(value)])}
+                      minimumTrackTintColor="#2A9D8F"
+                      maximumTrackTintColor="#E9ECEF"
+                      thumbTintColor="#2A9D8F"
+                    />
+                  </View>
+                  <View style={styles.paymentRangeTextContainer}>
+                    <Text style={styles.paymentRangeText}>Payment: 0€ - {paymentRange[1]}€</Text>
+                    <TouchableOpacity style={styles.applyButton}>
+                      <Text style={styles.applyButtonText}>Apply</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Tags Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Tags</Text>
+                  <View style={styles.tagsContainer}>
+                    {tags.map((tag, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[styles.tagButton, selectedTags.includes(tag) && styles.tagButtonSelected]}
+                        onPress={() => toggleTag(tag)}
+                      >
+                        <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextSelected]}>{tag}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </>
+            )}
+            {/* Results Count */}
+            <View style={styles.resultsContainer}>
+              <Text style={styles.resultsText}>
+                {loading ? 'Loading...' : `Showing 1-${Math.min(tasks.length, totalResults)} of ${totalResults} results`}
+              </Text>
+              <TouchableOpacity style={styles.sortButton}>
+                <Text style={styles.sortButtonText}>Sort by latest</Text>
+                <Ionicons name="chevron-down" size={16} color="#333" />
+              </TouchableOpacity>
             </View>
-          )}
-        </ScrollView>
-      ) : (
-        /* Map View */
-        <View style={styles.mapContainer}>
-          <WebView
-            ref={webViewRef}
-            source={{ html: generateMapHTML() }}
-            style={styles.map}
-            onMessage={handleWebViewMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            renderLoading={() => (
-              <View style={styles.webViewLoading}>
+            {/* Task Cards */}
+            {loading && tasks.length === 0 ? (
+              <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#2A9D8F" />
-                <Text>Loading map...</Text>
+                <Text style={styles.loadingText}>Loading jobs...</Text>
+              </View>
+            ) : tasks.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="briefcase-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyTitle}>No jobs found</Text>
+                <Text style={styles.emptySubtitle}>Try adjusting your filters or search criteria</Text>
+              </View>
+            ) : (
+              <View style={styles.tasksContainer}>
+                {tasks.map((task) => (
+                  <TouchableOpacity
+                    key={task._id}
+                    style={styles.taskCard}
+                    onPress={() => router.push(`/jobs/${task._id}` as any)}
+                  >
+                    <View style={styles.taskHeader}>
+                      <Text style={styles.taskTitle}>{task.title}</Text>
+                      <Text style={styles.taskPrice}>€{task.price}</Text>
+                    </View>
+                    <Text style={styles.taskDescription} numberOfLines={2}>
+                      {task.description}
+                    </Text>
+                    <View style={styles.taskMeta}>
+                      {task.location && (
+                        <View style={styles.taskMetaItem}>
+                          <Ionicons name="location-outline" size={14} color="#666" />
+                          <Text style={styles.taskMetaText}>{task.location}</Text>
+                        </View>
+                      )}
+                      {task.category && (
+                        <View style={styles.taskMetaItem}>
+                          <Ionicons name="pricetag-outline" size={14} color="#666" />
+                          <Text style={styles.taskMetaText}>{task.category}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.taskFooter}>
+                      <View style={styles.taskPoster}>
+                        <View style={styles.posterAvatar}>
+                          <Text style={styles.posterInitial}>{task.postedBy.firstName?.charAt(0) || 'U'}</Text>
+                        </View>
+                        <Text style={styles.posterName}>
+                          {task.postedBy.firstName} {task.postedBy.lastName}
+                        </Text>
+                      </View>
+
+                      <View style={[styles.statusBadge, getStatusBadgeStyle(task.status)]}>
+                        <Text style={[styles.statusText, getStatusTextStyle(task.status)]}>
+                          {task.status.replace('_', ' ')}
+                        </Text>
+                      </View>
+                    </View>
+                    {task.tags && task.tags.length > 0 && (
+                      <View style={styles.taskTags}>
+                        {task.tags.slice(0, 3).map((tag, index) => (
+                          <View key={index} style={styles.taskTag}>
+                            <Text style={styles.taskTagText}>{tag}</Text>
+                          </View>
+                        ))}
+                        {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
+                      </View>
+                    )}
+                    {/* Apply Now Button */}
+                    <TouchableOpacity
+                      style={[styles.applyButton, { marginTop: 10 }]}
+                      onPress={async () => {
+                        try {
+                          await authService.applyForTask(task._id);
+                          Alert.alert('Application Sent', 'You have applied for this job.');
+                        } catch (error: any) {
+                          Alert.alert('Error', error.message || 'Failed to apply for this job.');
+                        }
+                      }}
+                    >
+                      <Text style={styles.applyButtonText}>Apply Now</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+
+                {/* Load More Button */}
+                {currentPage < totalPages && (
+                  <TouchableOpacity
+                    style={styles.loadMoreButton}
+                    onPress={() => loadTasks(currentPage + 1, false)}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#2A9D8F" />
+                    ) : (
+                      <Text style={styles.loadMoreText}>Load More Jobs</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             )}
-            onError={(error) => {
-              console.error('WebView error:', error);
-              Alert.alert('Map Error', 'Failed to load the map. Please try the list view.');
-            }}
-          />
-          {/* Map Controls */}
-          <View style={styles.mapControls}>
-            <TouchableOpacity style={styles.mapControlButton} onPress={focusOnNetherlands}>
-              <Ionicons name="locate" size={24} color="#2A9D8F" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.mapControlButton} onPress={refreshMap}>
-              <Ionicons name="refresh" size={24} color="#2A9D8F" />
-            </TouchableOpacity>
           </View>
-          {/* Job Statistics */}
-          <View style={styles.mapStatsContainer}>
-            <View style={styles.mapStatItem}>
-              <Text style={styles.mapStatNumber}>{jobsWithCoordinates.length}</Text>
-              <Text style={styles.mapStatLabel}>Jobs Found</Text>
-            </View>
-          </View>
-          {/* Legend */}
-          <View style={styles.mapLegendContainer}>
-            <Text style={styles.mapLegendTitle}>Categories</Text>
-            <View style={styles.mapLegendItems}>
-              {['gardening', 'cleaning', 'moving', 'technology'].map((category) => (
-                <View key={category} style={styles.mapLegendItem}>
-                  <View style={[styles.mapLegendMarker, { backgroundColor: getMarkerColor(category) }]}>
-                    <Text style={styles.mapLegendIcon}>{getCategoryIcon(category)}</Text>
-                  </View>
-                  <Text style={styles.mapLegendText}>{category}</Text>
+        ) : (
+          /* Map View */
+          <View style={styles.mapContainer}>
+            <WebView
+              ref={webViewRef}
+              source={{ html: generateMapHTML() }}
+              style={styles.map}
+              onMessage={handleWebViewMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.webViewLoading}>
+                  <ActivityIndicator size="large" color="#2A9D8F" />
+                  <Text>Loading map...</Text>
                 </View>
-              ))}
+              )}
+              onError={(error) => {
+                console.error('WebView error:', error);
+                Alert.alert('Map Error', 'Failed to load the map. Please try the list view.');
+              }}
+            />
+            {/* Map Controls */}
+            <View style={styles.mapControls}>
+              <TouchableOpacity style={styles.mapControlButton} onPress={focusOnNetherlands}>
+                <Ionicons name="locate" size={24} color="#2A9D8F" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.mapControlButton} onPress={refreshMap}>
+                <Ionicons name="refresh" size={24} color="#2A9D8F" />
+              </TouchableOpacity>
+            </View>
+            {/* Job Statistics */}
+            <View style={styles.mapStatsContainer}>
+              <View style={styles.mapStatItem}>
+                <Text style={styles.mapStatNumber}>{jobsWithCoordinates.length}</Text>
+                <Text style={styles.mapStatLabel}>Jobs Found</Text>
+              </View>
+            </View>
+            {/* Legend */}
+            <View style={styles.mapLegendContainer}>
+              <Text style={styles.mapLegendTitle}>Categories</Text>
+              <View style={styles.mapLegendItems}>
+                {['gardening', 'cleaning', 'moving', 'technology'].map((category) => (
+                  <View key={category} style={styles.mapLegendItem}>
+                    <View style={[styles.mapLegendMarker, { backgroundColor: getMarkerColor(category) }]}>
+                      <Text style={styles.mapLegendIcon}>{getCategoryIcon(category)}</Text>
+                    </View>
+                    <Text style={styles.mapLegendText}>{category}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }

@@ -1,15 +1,12 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, SafeAreaView } from 'react-native';
-import { router } from 'expo-router';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Header from '../components/Header';
-import { Images } from '../constants/Images';
-
-export default function HomeScreen() {
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import JobCard from '../components/JobCard';
+import { Images } from '../constants/Images';
 import { useAuth } from '../context/AuthContext';
 
-const HomePage = () => {
+export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
@@ -92,34 +89,35 @@ const HomePage = () => {
           </TouchableOpacity>
           {/* Add more categories as needed */}
         </ScrollView>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.recentJobsHeader}>
-          <Text style={styles.recentJobsTitle}>Recent Jobs Available</Text>
-          <Text style={styles.recentJobsSubtitle}>Showing 500+ available jobs</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.recentJobsHeader}>
+            <Text style={styles.recentJobsTitle}>Recent Jobs Available</Text>
+            <Text style={styles.recentJobsSubtitle}>Showing 500+ available jobs</Text>
+          </View>
 
-        <View style={styles.jobCardsContainer}>
-          {jobData.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: job.id } })}
-            />
-          ))}
-        </View>
+          <View style={styles.jobCardsContainer}>
+            {jobData.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: job.id } })}
+              />
+            ))}
+          </View>
 
-        {/* Promotional Section */}
-        <View style={styles.promoContainer}>
-          <Image source={Images.dummy} style={styles.promoImage} resizeMode="cover" />
-          <Text style={styles.promoTitle}>Good Life Begins With A Good Company</Text>
-          <Text style={styles.promoDescription}>
-            Unlock opportunities with our handpicked list of companies. Explore the offers, compare, and find the best
-            fit for you with confidence.
-          </Text>
-          <TouchableOpacity style={styles.promoButton} onPress={() => router.push('/(tabs)/jobs')}>
-            <Text style={styles.promoButtonText}>Search Job</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Promotional Section */}
+          <View style={styles.promoContainer}>
+            <Image source={Images.dummy} style={styles.promoImage} resizeMode="cover" />
+            <Text style={styles.promoTitle}>Good Life Begins With A Good Company</Text>
+            <Text style={styles.promoDescription}>
+              Unlock opportunities with our handpicked list of companies. Explore the offers, compare, and find the best
+              fit for you with confidence.
+            </Text>
+            <TouchableOpacity style={styles.promoButton} onPress={() => router.push('/(tabs)/jobs')}>
+              <Text style={styles.promoButtonText}>Search Job</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </ScrollView>
     </SafeAreaView>
   );
@@ -199,5 +197,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  content: {
+    paddingBottom: 24,
+  },
+  recentJobsHeader: {
+    marginBottom: 12,
+  },
+  recentJobsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#222',
+  },
+  recentJobsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  jobCardsContainer: {
+    marginBottom: 24,
   },
 });
