@@ -1,7 +1,6 @@
 export const Images = {
-  logo: require('../../assets/images/logo.jpg'),
+  logo: require('../../assets/images/logo.png'),
   dummy: require('../../assets/images/dummy.jpg'),
-  localheroesLogo: require('../../assets/images/localheroes-logo.png'),
   // Add more images as needed
 } as const;
 
