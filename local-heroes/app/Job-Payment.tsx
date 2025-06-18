@@ -1,225 +1,253 @@
-// types.ts - Type definitions
-interface PaymentSlipData {
-  employeeName: string;
-  jobTitle: string;
-  hoursWorked: number;
-  hourlyRate: number;
-  bonuses: number;
-  deductions: number;
-  paymentMethod: string;
-  transactionId: string;
-  jobDescription: string;
-}
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-interface PaymentSlipCalculation extends PaymentSlipData {
-  totalPay: string;
-}
+export default function JobPaymentScreen() {
+  const [employeeName, setEmployeeName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [hoursWorked, setHoursWorked] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [bonuses, setBonuses] = useState("");
+  const [deductions, setDeductions] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [transactionId, setTransactionId] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [generating, setGenerating] = useState(false);
 
-// Extend the Window interface to include jsPDF
-declare global {
-  interface Window {
-    jspdf: {
-      jsPDF: new () => jsPDFDocument;
-    };
-  }
-}
-
-// Basic jsPDF interface (you might want to use @types/jspdf for full typing)
-interface jsPDFDocument {
-  text(text: string, x: number, y: number): void;
-  addImage(imageData: string, format: string, x: number, y: number, width: number, height: number): void;
-  save(filename: string): void;
-}
-
-// paymentSlipGenerator.ts - Main application logic
-class PaymentSlipGenerator {
-  private readonly CURRENCY_SYMBOL = '$';
-  
-  constructor() {
-    this.initializeEventListeners();
-  }
-
-  private initializeEventListeners(): void {
-    const generateButton = document.querySelector('button[onclick="generateSlip()"]') as HTMLButtonElement;
-    if (generateButton) {
-      generateButton.removeAttribute('onclick');
-      generateButton.addEventListener('click', () => this.generateSlip());
+  const handleGenerateSlip = async () => {
+    if (!employeeName || !jobTitle) {
+      Alert.alert("Please fill in all required fields.");
+      return;
     }
-  }
-
-  private getElementValue(id: string): string {
-    const element = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement;
-    return element?.value || '';
-  }
-
-  private getNumericValue(id: string, defaultValue: number = 0): number {
-    const value = this.getElementValue(id);
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? defaultValue : parsed;
-  }
-
-  private getFileInput(): File | null {
-    const fileInput = document.getElementById('evidenceImage') as HTMLInputElement;
-    return fileInput?.files?.[0] || null;
-  }
-
-  private collectFormData(): PaymentSlipData {
-    return {
-      employeeName: this.getElementValue('employeeName'),
-      jobTitle: this.getElementValue('jobTitle'),
-      hoursWorked: this.getNumericValue('hoursWorked'),
-      hourlyRate: this.getNumericValue('hourlyRate'),
-      bonuses: this.getNumericValue('bonuses'),
-      deductions: this.getNumericValue('deductions'),
-      paymentMethod: this.getElementValue('paymentMethod'),
-      transactionId: this.getElementValue('transactionId'),
-      jobDescription: this.getElementValue('jobDescription')
-    };
-  }
-
-  private calculateTotalPay(data: PaymentSlipData): PaymentSlipCalculation {
-    const totalPay = (data.hoursWorked * data.hourlyRate + data.bonuses - data.deductions).toFixed(2);
-    return { ...data, totalPay };
-  }
-
-  private validateFormData(data: PaymentSlipData): string[] {
-    const errors: string[] = [];
-
-    if (!data.employeeName.trim()) {
-      errors.push('Employee name is required');
-    }
-
-    if (!data.jobTitle.trim()) {
-      errors.push('Job title is required');
-    }
-
-    if (data.hoursWorked <= 0) {
-      errors.push('Hours worked must be greater than 0');
-    }
-
-    if (data.hourlyRate <= 0) {
-      errors.push('Hourly rate must be greater than 0');
-    }
-
-    return errors;
-  }
-
-  private createPDFContent(doc: jsPDFDocument, data: PaymentSlipCalculation): void {
-    const lineHeight = 10;
-    let yPosition = 10;
-
-    const addLine = (text: string): void => {
-      doc.text(text, 10, yPosition);
-      yPosition += lineHeight;
-    };
-
-    addLine("Job Payment Slip");
-    addLine(`Employee: ${data.employeeName}`);
-    addLine(`Job Title: ${data.jobTitle}`);
-    addLine(`Job Description: ${data.jobDescription}`);
-    addLine(`Hours: ${data.hoursWorked}`);
-    addLine(`Rate: ${this.CURRENCY_SYMBOL}${data.hourlyRate}`);
-    addLine(`Bonuses: ${this.CURRENCY_SYMBOL}${data.bonuses}`);
-    addLine(`Deductions: ${this.CURRENCY_SYMBOL}${data.deductions}`);
-    addLine(`Payment Method: ${data.paymentMethod}`);
-    addLine(`Transaction ID: ${data.transactionId}`);
-    addLine(`Total Pay: ${this.CURRENCY_SYMBOL}${data.totalPay}`);
-  }
-
-  private async addImageToPDF(doc: jsPDFDocument, file: File): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e: ProgressEvent<FileReader>): void => {
-        try {
-          const imgData = e.target?.result as string;
-          if (imgData) {
-            doc.addImage(imgData, 'JPEG', 10, 120, 60, 60);
-          }
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      };
-
-      reader.onerror = (): void => {
-        reject(new Error('Failed to read image file'));
-      };
-
-      reader.readAsDataURL(file);
-    });
-  }
-
-  private generateFileName(employeeName: string): string {
-    const sanitizedName = employeeName.replace(/[^a-zA-Z0-9]/g, '_');
-    const timestamp = new Date().toISOString().split('T')[0];
-    return `PaymentSlip_${sanitizedName}_${timestamp}.pdf`;
-  }
-
-  private showError(message: string): void {
-    alert(`Error: ${message}`);
-  }
-
-  private showErrors(errors: string[]): void {
-    const errorMessage = errors.join('\n');
-    this.showError(errorMessage);
-  }
-
-  public async generateSlip(): Promise<void> {
+    setGenerating(true);
     try {
-      // Check if jsPDF is available
-      if (!window.jspdf) {
-        throw new Error('jsPDF library is not loaded');
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([400, 600]);
+      const { width, height } = page.getSize();
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+      let y = height - 40;
+      const lineHeight = 24;
+      const draw = (label: string, value: string) => {
+        page.drawText(`${label}: ${value}`, {
+          x: 40,
+          y,
+          size: 16,
+          font,
+          color: rgb(0, 0, 0),
+        });
+        y -= lineHeight;
+      };
+
+      page.drawText("Job Payment Slip", {
+        x: 40,
+        y,
+        size: 20,
+        font,
+        color: rgb(0, 0, 0),
+      });
+      y -= lineHeight * 2;
+      draw("Employee", employeeName);
+      draw("Job Title", jobTitle);
+      draw("Job Description", jobDescription);
+      draw("Hours Worked", hoursWorked);
+      draw("Hourly Rate", hourlyRate);
+      draw("Bonuses", bonuses);
+      draw("Deductions", deductions);
+      draw("Payment Method", paymentMethod);
+      draw("Transaction ID", transactionId);
+      draw(
+        "Total Pay",
+        (
+          Number(hoursWorked) * Number(hourlyRate) +
+          Number(bonuses) -
+          Number(deductions)
+        ).toFixed(2)
+      );
+
+      const pdfBytes = await pdfDoc.saveAsBase64();
+      const pdfUri = FileSystem.cacheDirectory + "payment-slip.pdf";
+      await FileSystem.writeAsStringAsync(pdfUri, pdfBytes, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      Alert.alert("PDF Generated!", `Saved to: ${pdfUri}`);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(pdfUri);
       }
-
-      const formData = this.collectFormData();
-      const validationErrors = this.validateFormData(formData);
-
-      if (validationErrors.length > 0) {
-        this.showErrors(validationErrors);
-        return;
-      }
-
-      const calculatedData = this.calculateTotalPay(formData);
-      const doc = new window.jspdf.jsPDF();
-
-      this.createPDFContent(doc, calculatedData);
-
-      const file = this.getFileInput();
-      if (file) {
-        await this.addImageToPDF(doc, file);
-      }
-
-      const fileName = this.generateFileName(calculatedData.employeeName);
-      doc.save(fileName);
-
     } catch (error) {
-      console.error('Error generating payment slip:', error);
-      this.showError(error instanceof Error ? error.message : 'An unknown error occurred');
+      Alert.alert("Error", "Failed to generate PDF");
+    } finally {
+      setGenerating(false);
     }
-  }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.card}>
+          <Text style={styles.title}>Job Payment Slip</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Employee Name"
+            value={employeeName}
+            onChangeText={setEmployeeName}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Job Title"
+            value={jobTitle}
+            onChangeText={setJobTitle}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Hours Worked"
+            value={hoursWorked}
+            onChangeText={setHoursWorked}
+            keyboardType="numeric"
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Hourly Rate"
+            value={hourlyRate}
+            onChangeText={setHourlyRate}
+            keyboardType="numeric"
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Bonuses"
+            value={bonuses}
+            onChangeText={setBonuses}
+            keyboardType="numeric"
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Deductions"
+            value={deductions}
+            onChangeText={setDeductions}
+            keyboardType="numeric"
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Payment Method"
+            value={paymentMethod}
+            onChangeText={setPaymentMethod}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Transaction ID"
+            value={transactionId}
+            onChangeText={setTransactionId}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Job Description"
+            value={jobDescription}
+            onChangeText={setJobDescription}
+            multiline
+            numberOfLines={3}
+            placeholderTextColor="#aaa"
+          />
+          <TouchableOpacity
+            style={[styles.button, generating && styles.buttonDisabled]}
+            onPress={handleGenerateSlip}
+            disabled={generating}
+            activeOpacity={0.8}
+          >
+            {generating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Generate Payment Slip</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
-// app.ts - Application initialization
-class App {
-  private paymentSlipGenerator: PaymentSlipGenerator;
-
-  constructor() {
-    this.paymentSlipGenerator = new PaymentSlipGenerator();
-  }
-
-  public init(): void {
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log('Payment Slip Generator initialized');
-    });
-  }
-}
-
-// Initialize the application
-const app = new App();
-app.init();
-
-// Export for potential module usage
-export { App, PaymentSlipGenerator };
-export type { PaymentSlipCalculation, PaymentSlipData };
-
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  scrollContent: {
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: "#F8F8F8",
+    flexGrow: 1,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 420,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    marginTop: 24,
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#2A9D8F",
+    marginBottom: 18,
+    textAlign: "center",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    fontSize: 16,
+    backgroundColor: "#F9F9F9",
+    color: "#222",
+  },
+  textArea: {
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  button: {
+    backgroundColor: "#2A9D8F",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});

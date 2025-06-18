@@ -72,7 +72,7 @@ export default function SettingsScreen() {
           color="#0ca678"
         />
       ),
-      href: "/payment-slips",
+      href: "/Job-Payment",
     },
     {
       id: "about",
@@ -89,7 +89,6 @@ export default function SettingsScreen() {
       <Header />
       {/* Settings Items */}
       <ScrollView
-      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -100,10 +99,14 @@ export default function SettingsScreen() {
             <Text style={styles.balanceTitle}>Your Balance</Text>
             <Ionicons name="wallet-outline" size={24} color="#0ca678" />
           </View>
-          <Text style={styles.balanceAmount}>€{user?.balance?.toFixed(2) ?? '0.00'}</Text>
+          <Text style={styles.balanceAmount}>
+            €{user?.balance?.toFixed(2) ?? "0.00"}
+          </Text>
           <TouchableOpacity
             style={styles.withdrawButton}
-            onPress={() => Alert.alert('Coming Soon', 'This feature is not yet available.')}
+            onPress={() =>
+              Alert.alert("Coming Soon", "This feature is not yet available.")
+            }
           >
             <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
           </TouchableOpacity>
@@ -284,42 +287,42 @@ const styles = StyleSheet.create({
     height: 80,
   },
   balanceContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 8,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   balanceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   balanceTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
   },
   balanceAmount: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#0ca678',
+    fontWeight: "bold",
+    color: "#0ca678",
     marginBottom: 20,
   },
   withdrawButton: {
-    backgroundColor: '#0ca678',
+    backgroundColor: "#0ca678",
     borderRadius: 8,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   withdrawButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

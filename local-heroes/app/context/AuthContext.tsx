@@ -1,6 +1,7 @@
 import React, {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -109,18 +110,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       await authService.logout();
     } catch (err) {
-      console.error('Logout error:', err);
+      console.error("Logout error:", err);
     } finally {
       setUser(null);
-      await SecureStore.deleteItemAsync('user');
-      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync("user");
+      await SecureStore.deleteItemAsync("accessToken");
       setIsLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    setupResponseInterceptor(logout);
-  }, [logout]);
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -215,21 +212,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       setIsLoading(false);
     }
   };
-  // Logout function
-  const logout = async () => {
-    try {
-      setIsLoading(true);
-      await authService.logout();
-      setUser(null);
-      setToken(null);
-      await SecureStore.deleteItemAsync("user");
-      await SecureStore.deleteItemAsync("token");
-    } catch (err) {
-      console.error("Logout error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }; // Update user function
+
+  // Update user function
   const updateUser = async (userData: Partial<User>) => {
     try {
       setIsLoading(true);
@@ -287,7 +271,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       {children}
     </AuthContext.Provider>
   );
-};
 };
 
 export function useAuth() {
