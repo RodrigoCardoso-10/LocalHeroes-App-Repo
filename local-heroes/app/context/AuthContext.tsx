@@ -21,6 +21,7 @@ type User = {
   bio?: string;
   skills?: string[];
   profilePicture?: string;
+  balance: number;
   createdAt?: string;
   updatedAt?: string;
   emailVerifiedAt?: string | null;
@@ -101,6 +102,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     loadUser();
   }, []);
+
+  // Logout function
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      await SecureStore.deleteItemAsync('user');
+      await SecureStore.deleteItemAsync('accessToken');
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setupResponseInterceptor(logout);
+  }, [logout]);
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -267,6 +287,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       {children}
     </AuthContext.Provider>
   );
+};
 };
 
 export function useAuth() {

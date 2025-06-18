@@ -7,6 +7,7 @@ import {
   Alert,
   Dimensions,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -20,6 +21,13 @@ import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/api";
 import { Task, TaskFilters, TasksResponse } from "../types/task";
+  View,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import Header from '../components/Header';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/api';
+import { Task, TaskFilters, TasksResponse } from '../types/task';
 
 const { width, height } = Dimensions.get("window");
 
@@ -89,6 +97,8 @@ export default function JobsScreen() {
   const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
   const [selectedDatePosted, setSelectedDatePosted] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortOption, setSortOption] = useState('latest');
+  const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [scrollPosition, setScrollPosition] = useState(0); // Backend integration state
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -232,6 +242,21 @@ export default function JobsScreen() {
       latitude: baseLatitude + randomOffsetLat,
       longitude: baseLongitude + randomOffsetLng,
     };
+  const getCoordinatesForLocation = (task: Task): { latitude: number; longitude: number } | null => {
+    if (task.location?.point?.coordinates && task.location.point.coordinates.length === 2) {
+      return {
+        latitude: task.location.point.coordinates[1],
+        longitude: task.location.point.coordinates[0],
+      };
+    }
+
+    // Fallback for older data or data without coordinates
+    const locationName = getLocationAddress(task.location);
+    if (locationName && DUTCH_CITIES_COORDS[locationName]) {
+      return DUTCH_CITIES_COORDS[locationName];
+    }
+
+    return null;
   };
 
   const getMarkerColor = (category?: string) => {
@@ -280,6 +305,36 @@ export default function JobsScreen() {
       default:
         return "💼";
     }
+    if (typeof location === 'string') {
+      return location;
+    }
+    if (typeof location === 'object') {
+      if (location.address) {
+        return location.address;
+      }
+      if (location.point?.coordinates) {
+        return `${location.point.coordinates[1].toFixed(4)}, ${location.point.coordinates[0].toFixed(4)}`;
+      }
+    }
+    return 'Unknown Location';
+  };
+
+  const getLocationAddress = (location: any): string => {
+    if (!location) {
+      return 'Unknown Location';
+    }
+    if (typeof location === 'string') {
+      return location;
+    }
+    if (typeof location === 'object') {
+      if (location.address) {
+        return location.address;
+      }
+      if (location.point?.coordinates) {
+        return `${location.point.coordinates[1].toFixed(4)}, ${location.point.coordinates[0].toFixed(4)}`;
+      }
+    }
+    return 'Unknown Location';
   };
 
   const generateMapHTML = () => {
@@ -288,7 +343,7 @@ export default function JobsScreen() {
       lat: job.coordinate.latitude,
       lng: job.coordinate.longitude,
       title: job.title,
-      location: job.location,
+      location: getLocationAddress(job.location),
       price: job.price,
       category: job.category || "General",
       color: getMarkerColor(job.category),
@@ -317,7 +372,7 @@ export default function JobsScreen() {
       <div id="map"></div>
       <script>
         try {
-          const map = L.map('map').setView([52.1326, 5.2913], 7);
+          const map = L.map('map').setView([52.3676, 4.9041], 7);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
@@ -349,7 +404,7 @@ export default function JobsScreen() {
             if (data === 'refresh') {
               location.reload();
             } else if (data === 'recenter') {
-              map.setView([52.1326, 5.2913], 7);
+              map.setView([52.3676, 4.9041], 7);
             }
           }
 
@@ -427,7 +482,7 @@ export default function JobsScreen() {
 
       const filters: TaskFilters = {
         page,
-        limit: 10,
+        limit: viewMode === 'map' ? 500 : 10,
       }; // Apply filters
       if (searchText.trim()) {
         filters.search = searchText.trim();
@@ -453,6 +508,9 @@ export default function JobsScreen() {
       if (selectedTags.length > 0) {
         filters.tags = selectedTags;
       }
+      if (sortOption) {
+        filters.sortBy = sortOption;
+      }
 
       const response: TasksResponse = await authService.getTasks(filters); // Check if component is still mounted before updating state
       if (!isMountedRef.current) return;
@@ -466,6 +524,19 @@ export default function JobsScreen() {
             ...job,
             coordinate: getCoordinatesForLocation(job.location || ""),
           }));
+      } else {
+        setTasks((prev) => [...prev, ...response.tasks]);
+      }
+
+      // Also create jobs with coordinates for map view
+      const jobMarkers = response.tasks
+        .map((job) => ({
+          ...job,
+          coordinate: getCoordinatesForLocation(job),
+        }))
+        .filter((job): job is JobMarker => job.coordinate !== null);
+
+      if (resetResults || page === 1) {
         setJobsWithCoordinates(jobMarkers);
       } else {
         setTasks((prev) => [...prev, ...response.tasks]);
@@ -477,6 +548,7 @@ export default function JobsScreen() {
             coordinate: getCoordinatesForLocation(job.location || ""),
           }));
         setJobsWithCoordinates((prev) => [...prev, ...newJobMarkers]);
+        setJobsWithCoordinates((prev) => [...prev, ...jobMarkers]);
       }
 
       setTotalResults(response.total);
@@ -551,7 +623,16 @@ export default function JobsScreen() {
     selectedDatePosted,
     selectedTags,
     paymentRange,
+    sortOption,
+    viewMode,
   ]);
+
+  // Sort options
+  const sortOptions = [
+    { label: 'Sort by Latest', value: 'latest' },
+    { label: 'Price: Low to High', value: 'price-asc' },
+    { label: 'Price: High to Low', value: 'price-desc' },
+  ];
 
   // Helper functions for status styling
   const getStatusBadgeStyle = (status: string) => {
@@ -639,9 +720,34 @@ export default function JobsScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+      {/* View Toggle */}
+      <View style={styles.viewToggleContainer}>
+        <TouchableOpacity
+          style={[styles.viewToggleButton, viewMode === 'list' && styles.activeViewToggle]}
+          onPress={() => setViewMode('list')}
+        >
+          <Ionicons name="list" size={20} color={viewMode === 'list' ? '#fff' : '#2A9D8F'} />
+          <Text style={[styles.viewToggleText, viewMode === 'list' && styles.activeViewToggleText]}>List</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.viewToggleButton, viewMode === 'map' && styles.activeViewToggle]}
+          onPress={() => setViewMode('map')}
+        >
+          <Ionicons name="map" size={20} color={viewMode === 'map' ? '#fff' : '#2A9D8F'} />
+          <Text style={[styles.viewToggleText, viewMode === 'map' && styles.activeViewToggleText]}>Map</Text>
+        </TouchableOpacity>
+      </View>
 
         {viewMode === "list" ? (
           /* List View */
+      {viewMode === 'list' ? (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {/* List View */}
           <View style={styles.scrollView}>
             {/* Top Buttons Row */}
             <View style={styles.topButtonsRow}>
@@ -720,6 +826,11 @@ export default function JobsScreen() {
                     animationType="fade"
                     onRequestClose={() => setShowCities(false)}
                   >
+                    <TouchableOpacity
+                      style={styles.modalOverlay}
+                      activeOpacity={1}
+                      onPress={() => setShowCities(false)}
+                    >
                     <TouchableOpacity
                       style={styles.modalOverlay}
                       activeOpacity={1}
@@ -870,6 +981,9 @@ export default function JobsScreen() {
                         >
                           {tag}
                         </Text>
+                        <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextSelected]}>
+                          {tag}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -885,12 +999,58 @@ export default function JobsScreen() {
                       tasks.length,
                       totalResults
                     )} of ${totalResults} results`}
+                {loading
+                  ? 'Loading...'
+                  : `Showing 1-${Math.min(tasks.length, totalResults)} of ${totalResults} results`}
               </Text>
-              <TouchableOpacity style={styles.sortButton}>
-                <Text style={styles.sortButtonText}>Sort by latest</Text>
+              <TouchableOpacity style={styles.sortButton} onPress={() => setIsSortModalVisible(true)}>
+                <Text style={styles.sortButtonText}>
+                  {sortOptions.find((o) => o.value === sortOption)?.label || 'Sort by'}
+                </Text>
                 <Ionicons name="chevron-down" size={16} color="#333" />
               </TouchableOpacity>
             </View>
+            {/* Sort Modal */}
+            <Modal
+              visible={isSortModalVisible}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setIsSortModalVisible(false)}
+            >
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setIsSortModalVisible(false)}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.citiesDropdownContainer}>
+                    <View style={styles.citiesDropdownHeader}>
+                      <Text style={styles.citiesDropdownTitle}>Sort by</Text>
+                      <TouchableOpacity onPress={() => setIsSortModalVisible(false)}>
+                        <Ionicons name="close" size={24} color="#333" />
+                      </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
+                      {sortOptions.map((option, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.cityItem}
+                          onPress={() => {
+                            setSortOption(option.value);
+                            setIsSortModalVisible(false);
+                          }}
+                        >
+                          <Text style={[styles.cityText, sortOption === option.value && styles.selectedCityText]}>
+                            {option.label}
+                          </Text>
+                          {sortOption === option.value && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </Modal>
             {/* Task Cards */}
             {loading && tasks.length === 0 ? (
               <View style={styles.loadingContainer}>
@@ -938,6 +1098,8 @@ export default function JobsScreen() {
                               ? task.location.address
                               : "Unknown location"}
                           </Text>
+                          <Ionicons name="location-outline" size={14} color="#666" />
+                          <Text style={styles.taskMetaText}>{getLocationAddress(task.location)}</Text>
                         </View>
                       )}
                       {task.category && (
@@ -1012,6 +1174,7 @@ export default function JobsScreen() {
                           );
                         }
                       }}
+                      onPress={() => router.push(`/apply?id=${task._id}`)}
                     >
                       <Text style={styles.applyButtonText}>Apply Now</Text>
                     </TouchableOpacity>
@@ -1068,6 +1231,35 @@ export default function JobsScreen() {
               >
                 <Ionicons name="locate" size={24} color="#2A9D8F" />
               </TouchableOpacity>
+          <View style={styles.bottomSpace} />
+        </ScrollView>
+      ) : (
+        /* Map View */
+        <View style={styles.mapContainer}>
+          <WebView
+            ref={webViewRef}
+            source={{ html: generateMapHTML() }}
+            style={styles.map}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={styles.webViewLoading}>
+                <ActivityIndicator size="large" color="#2A9D8F" />
+                <Text>Loading map...</Text>
+              </View>
+            )}
+            onError={(error) => {
+              console.error('WebView error:', error);
+              Alert.alert('Map Error', 'Failed to load the map. Please try the list view.');
+            }}
+          />
+          {/* Map Controls */}
+          <View style={styles.mapControls}>
+            <TouchableOpacity style={styles.mapControlButton} onPress={focusOnNetherlands}>
+              <Ionicons name="locate" size={24} color="#2A9D8F" />
+            </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.mapControlButton}
@@ -1112,6 +1304,19 @@ export default function JobsScreen() {
         )}
         <View style={styles.bottomSpace} />
       </ScrollView>
+            <TouchableOpacity style={styles.mapControlButton} onPress={onRefresh}>
+              <Ionicons name="refresh" size={24} color="#2A9D8F" />
+            </TouchableOpacity>
+          </View>
+          {/* Job Statistics */}
+          <View style={styles.mapStatsContainer}>
+            <View style={styles.mapStatItem}>
+              <Text style={styles.mapStatNumber}>{jobsWithCoordinates.length}</Text>
+              <Text style={styles.mapStatLabel}>Jobs Found</Text>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -1620,6 +1825,8 @@ const styles = StyleSheet.create({
   mapControls: {
     position: "absolute",
     top: 20,
+    position: 'absolute',
+    top: 110,
     right: 20,
     flexDirection: "column",
   },
@@ -1639,6 +1846,8 @@ const styles = StyleSheet.create({
     top: 20,
     left: 20,
     backgroundColor: "white",
+    right: 20,
+    backgroundColor: 'white',
     padding: 15,
     borderRadius: 10,
     shadowColor: "#000",
@@ -1706,4 +1915,5 @@ const styles = StyleSheet.create({
     color: "#666",
     textTransform: "capitalize",
   },
+});
 });

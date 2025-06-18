@@ -27,6 +27,24 @@ interface JobCardProps {
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
+  // Helper for getting display address
+  const getLocationAddress = (
+    location: JobCardProps["job"]["location"]
+  ): string => {
+    if (!location) {
+      return "Unknown Location";
+    }
+    if (location.address) {
+      return location.address;
+    }
+    if (location.point?.coordinates) {
+      return `${location.point.coordinates[1].toFixed(
+        4
+      )}, ${location.point.coordinates[0].toFixed(4)}`;
+    }
+    return "Unknown Location";
+  };
+
   // Helper for status badge style
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
