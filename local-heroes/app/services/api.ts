@@ -35,48 +35,49 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor for handling token refresh
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+let responseInterceptorId: number | null = null;
 
-    // If the error is 401 (Unauthorized) and we haven't already tried to refresh the token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // Try to refresh the token - use the same baseURL as the main API instance
-        console.log('Attempting to refresh token at:', `${baseURL}/auth/refresh`);
-        const refreshResponse = await axios.post(
-          `${baseURL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          }
-        );
-
-        // Store the new access token in SecureStore
-        if (refreshResponse.data && refreshResponse.data.accessToken) {
-          await SecureStore.setItemAsync('accessToken', refreshResponse.data.accessToken);
-        }
-
-        // If refresh successful, retry the original request
-        return api(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, redirect to login (handled by the auth context)
-        console.error('Token refresh failed:', refreshError);
-        // Clear the stored token on refresh failure
-        await SecureStore.deleteItemAsync('accessToken').catch((err) =>
-          console.error('Error clearing access token:', err)
-        );
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
+export const setupResponseInterceptor = (logout: () => void) => {
+  if (responseInterceptorId !== null) {
+    api.interceptors.response.eject(responseInterceptorId);
   }
-);
+
+  responseInterceptorId = api.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = error.config as AxiosRequestConfig & {
+        _retry?: boolean;
+      };
+
+      if (error.response?.status === 401 && originalRequest.url !== '/auth/logout' && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          console.log('Attempting to refresh token at:', `${baseURL}/auth/refresh`);
+          const refreshResponse = await axios.post(
+            `${baseURL}/auth/refresh`,
+            {},
+            {
+              withCredentials: true,
+            }
+          );
+
+          if (refreshResponse.data && refreshResponse.data.accessToken) {
+            await SecureStore.setItemAsync('accessToken', refreshResponse.data.accessToken);
+          }
+
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          logout();
+          return Promise.reject(refreshError);
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+};
 
 // Authentication services
 export const authService = {
@@ -334,7 +335,7 @@ export const authService = {
   createTask: async (taskData: {
     title: string;
     description: string;
-    location?: string;
+    location?: { address: string };
     price: number;
     dueDate?: string;
     category?: string;
@@ -355,7 +356,7 @@ export const authService = {
     taskData: {
       title?: string;
       description?: string;
-      location?: string;
+      location?: { address: string };
       price?: number;
       dueDate?: string;
       category?: string;

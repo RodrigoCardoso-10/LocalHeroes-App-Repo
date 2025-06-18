@@ -1,5 +1,5 @@
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { authService } from '../services/api';
+import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback } from 'react';
+import { authService, setupResponseInterceptor } from '../services/api';
 // Using SecureStore instead of AsyncStorage for secure storage of sensitive data
 import * as SecureStore from 'expo-secure-store';
 
@@ -75,6 +75,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loadUser();
   }, []);
 
+  // Logout function
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      await SecureStore.deleteItemAsync('user');
+      await SecureStore.deleteItemAsync('accessToken');
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setupResponseInterceptor(logout);
+  }, [logout]);
+
   // Login function
   const login = async (email: string, password: string) => {
     try {
@@ -149,19 +168,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
   };
-  // Logout function
-  const logout = async () => {
-    try {
-      setIsLoading(true);
-      await authService.logout();
-      setUser(null);
-      await SecureStore.deleteItemAsync('user');
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }; // Update user function
+  // Update user function
   const updateUser = async (userData: Partial<User>) => {
     try {
       setIsLoading(true);
@@ -200,11 +207,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
   };
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, isLoading, error, login, register, logout, updateUser, clearError }}>
+    <AuthContext.Provider
+      value={{ user, isLoggedIn, isLoading, error, login, register, logout, updateUser, clearError }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
 export function useAuth() {
   const context = useContext(AuthContext);

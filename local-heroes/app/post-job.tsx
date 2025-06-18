@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Header from './components/Header';
 import { useAuth } from './context/AuthContext';
 import { authService } from './services/api';
 
@@ -56,7 +57,7 @@ export default function PostJobScreen() {
         description: `${description.trim()}${mainTasks.trim() ? '\n\nMain Tasks:\n' + mainTasks.trim() : ''}${
           minimumRequirements.trim() ? '\n\nMinimum Requirements:\n' + minimumRequirements.trim() : ''
         }`,
-        location: location.trim() || undefined,
+        location: location.trim() ? { address: location.trim() } : undefined,
         price: Number(payment),
         category: category.trim() || undefined,
         tags: tags.trim()
@@ -119,9 +120,8 @@ export default function PostJobScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Post a Job</Text>
-        <Text style={styles.subtitle}>Nish dis faucibus pison lacus tristique</Text>
+      <Header />
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.formContainer}>
         <PlaceholderInput
           label="Job Title *"
           value={jobTitle}
@@ -198,7 +198,7 @@ export default function PostJobScreen() {
           )}
         </TouchableOpacity>
         <Text style={styles.noteText}>* Required fields. Your job will be visible to all users once posted.</Text>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
