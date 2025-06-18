@@ -1,25 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import React from "react";
-import { Image, StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Header() {
   return (
     <View style={styles.headerContainer}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.logoContainer}
-        onPress={() => router.push('/(tabs)')}
+        onPress={() => router.push("/(tabs)")}
       >
         <Image
           source={require("../../assets/images/logo.jpg")}
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.headerTitle}>LocalHero</Text>
+        <Text style={styles.headerTitle}>LocalHeroes</Text>
       </TouchableOpacity>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.settingsIcon}
-        onPress={() => router.push('/(tabs)/settings')}
+        onPress={() => router.push("/(tabs)/settings")}
       >
         <Ionicons name="settings-outline" size={28} color="#fff" />
       </TouchableOpacity>
@@ -32,7 +33,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingTop: Constants.statusBarHeight,
+    paddingBottom: 10,
     paddingHorizontal: 16,
     backgroundColor: "#000",
   },

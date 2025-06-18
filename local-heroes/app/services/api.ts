@@ -35,48 +35,49 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor for handling token refresh
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+let responseInterceptorId: number | null = null;
 
-    // If the error is 401 (Unauthorized) and we haven't already tried to refresh the token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // Try to refresh the token - use the same baseURL as the main API instance
-        console.log('Attempting to refresh token at:', `${baseURL}/auth/refresh`);
-        const refreshResponse = await axios.post(
-          `${baseURL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          }
-        );
-
-        // Store the new access token in SecureStore
-        if (refreshResponse.data && refreshResponse.data.accessToken) {
-          await SecureStore.setItemAsync('accessToken', refreshResponse.data.accessToken);
-        }
-
-        // If refresh successful, retry the original request
-        return api(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, redirect to login (handled by the auth context)
-        console.error('Token refresh failed:', refreshError);
-        // Clear the stored token on refresh failure
-        await SecureStore.deleteItemAsync('accessToken').catch((err) =>
-          console.error('Error clearing access token:', err)
-        );
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
+export const setupResponseInterceptor = (logout: () => void) => {
+  if (responseInterceptorId !== null) {
+    api.interceptors.response.eject(responseInterceptorId);
   }
-);
+
+  responseInterceptorId = api.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = error.config as AxiosRequestConfig & {
+        _retry?: boolean;
+      };
+
+      if (error.response?.status === 401 && originalRequest.url !== '/auth/logout' && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          console.log('Attempting to refresh token at:', `${baseURL}/auth/refresh`);
+          const refreshResponse = await axios.post(
+            `${baseURL}/auth/refresh`,
+            {},
+            {
+              withCredentials: true,
+            }
+          );
+
+          if (refreshResponse.data && refreshResponse.data.accessToken) {
+            await SecureStore.setItemAsync('accessToken', refreshResponse.data.accessToken);
+          }
+
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          logout();
+          return Promise.reject(refreshError);
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+};
 
 // Authentication services
 export const authService = {
@@ -190,23 +191,17 @@ export const authService = {
   logout: async () => {
     try {
       const response = await api.delete('/auth/logout');
-
-      // Clear the stored access token
       await SecureStore.deleteItemAsync('accessToken');
-
       return response.data;
     } catch (error: any) {
-      console.error('Logout error details:', error);
-      // Still try to clear the token even if the server request fails
       await SecureStore.deleteItemAsync('accessToken').catch((err) =>
         console.error('Error clearing access token:', err)
       );
-
       throw error.response?.data || { message: 'Logout failed' };
     }
   },
 
-  // Request password reset
+  // Password reset
   requestPasswordReset: async (email: string) => {
     try {
       const response = await api.post('/auth/password-reset', { email });
@@ -216,7 +211,6 @@ export const authService = {
     }
   },
 
-  // Reset password with token
   resetPassword: async (token: string, password: string) => {
     try {
       const response = await api.post('/auth/reset-password', { token, password });
@@ -225,7 +219,8 @@ export const authService = {
       throw error.response?.data || { message: 'Password reset failed' };
     }
   },
-  // Check if user is authenticated
+
+  // User
   checkAuth: async () => {
     try {
       const response = await api.get('/users/userdata');
@@ -233,94 +228,27 @@ export const authService = {
     } catch (error: any) {
       throw error.response?.data || { message: 'Authentication check failed' };
     }
-  }, // Update user profile
-  updateProfile: async (profileData: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    bio?: string;
-    skills?: string[];
-    profilePicture?: string;
-  }) => {
+  },
+
+  updateProfile: async (profileData: any) => {
     try {
       const response = await api.patch('/users/profile', profileData);
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || { message: 'Profile update failed' };
+      throw error.response?.data || { message: 'Failed to update profile' };
     }
   },
 
-  // Upload profile picture
-  uploadProfilePicture: async (imageUri: string, fileName: string = 'profile.jpg') => {
+  // Tasks
+  getTasks: async (filters: any) => {
     try {
-      const formData = new FormData();
-      formData.append('profilePicture', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: fileName,
-      } as any);
-
-      const response = await api.post('/users/profile-picture', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { message: 'Profile picture upload failed' };
-    }
-  },
-  // Tasks/Jobs API methods
-
-  // Get all tasks with filtering
-  getTasks: async (filters?: {
-    search?: string;
-    location?: string;
-    category?: string;
-    minPrice?: number;
-    maxPrice?: number;
-    status?: string;
-    datePosted?: string;
-    tags?: string[];
-    experienceLevel?: string;
-    page?: number;
-    limit?: number;
-  }) => {
-    try {
-      const params = new URLSearchParams();
-
-      if (filters) {
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            if (Array.isArray(value)) {
-              params.append(key, value.join(','));
-            } else {
-              params.append(key, String(value));
-            }
-          }
-        });
-      }
-
-      const response = await api.get(`/tasks?${params.toString()}`);
+      const response = await api.get('/tasks', { params: filters });
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to fetch tasks' };
     }
   },
 
-  // Get filter counts
-  getFilterCounts: async () => {
-    try {
-      const response = await api.get('/tasks/filter-counts');
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to fetch filter counts' };
-    }
-  },
-
-  // Get single task by ID
   getTask: async (id: string) => {
     try {
       const response = await api.get(`/tasks/${id}`);
@@ -330,17 +258,7 @@ export const authService = {
     }
   },
 
-  // Create new task
-  createTask: async (taskData: {
-    title: string;
-    description: string;
-    location?: string;
-    price: number;
-    dueDate?: string;
-    category?: string;
-    tags?: string[];
-    experienceLevel?: string;
-  }) => {
+  createTask: async (taskData: any) => {
     try {
       const response = await api.post('/tasks', taskData);
       return response.data;
@@ -349,20 +267,7 @@ export const authService = {
     }
   },
 
-  // Update task
-  updateTask: async (
-    id: string,
-    taskData: {
-      title?: string;
-      description?: string;
-      location?: string;
-      price?: number;
-      dueDate?: string;
-      category?: string;
-      tags?: string[];
-      experienceLevel?: string;
-    }
-  ) => {
+  updateTask: async (id: string, taskData: any) => {
     try {
       const response = await api.patch(`/tasks/${id}`, taskData);
       return response.data;
@@ -371,7 +276,15 @@ export const authService = {
     }
   },
 
-  // Delete task
+  getFilterCounts: async () => {
+    try {
+      const response = await api.get('/tasks/filter-counts');
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch filter counts' };
+    }
+  },
+
   deleteTask: async (id: string) => {
     try {
       const response = await api.delete(`/tasks/${id}`);
@@ -380,7 +293,7 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to delete task' };
     }
   },
-  // Apply for task
+
   applyForTask: async (id: string) => {
     try {
       console.log('Attempting to apply for task:', {
@@ -454,50 +367,37 @@ export const authService = {
     }
   },
 
-  // Accept applicant (for job posters)
-  acceptApplicant: async (id: string, applicantId: string) => {
+  getTaskWithApplicants: async (id: string) => {
     try {
-      const response = await api.patch(`/tasks/${id}/accept-applicant`, { applicantId });
+      const response = await api.get(`/tasks/${id}/with-applicants`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to get applicants' };
+    }
+  },
+
+  acceptApplicant: async (taskId: string, applicantId: string) => {
+    try {
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/accept`);
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to accept applicant' };
     }
   },
 
-  // Accept task
-  acceptTask: async (id: string) => {
+  denyApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.patch(`/tasks/${id}/accept`);
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/deny`);
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to accept task' };
+      throw error.response?.data || { message: 'Failed to deny applicant' };
     }
   },
 
-  // Complete task
-  completeTask: async (id: string) => {
+  // Notifications
+  getNotifications: async () => {
     try {
-      const response = await api.patch(`/tasks/${id}/complete`);
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to complete task' };
-    }
-  },
-
-  // Cancel task
-  cancelTask: async (id: string) => {
-    try {
-      const response = await api.patch(`/tasks/${id}/cancel`);
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to cancel task' };
-    }
-  },
-
-  // Notifications API methods
-  getNotifications: async (limit = 50, offset = 0) => {
-    try {
-      const response = await api.get(`/notifications?limit=${limit}&offset=${offset}`);
+      const response = await api.get('/notifications');
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to fetch notifications' };
@@ -515,7 +415,7 @@ export const authService = {
 
   markAllNotificationsAsRead: async () => {
     try {
-      const response = await api.patch('/notifications/mark-all-read');
+      const response = await api.patch('/notifications/read-all');
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to mark all notifications as read' };

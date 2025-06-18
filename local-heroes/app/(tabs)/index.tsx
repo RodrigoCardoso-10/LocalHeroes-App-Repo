@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -22,6 +23,7 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
   const [recentJobs, setRecentJobs] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = async () => {
     try {
@@ -30,6 +32,22 @@ export default function HomeScreen() {
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  // Handle search functionality
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push({
+        pathname: "/(tabs)/jobs",
+        params: { search: searchQuery.trim() },
+      });
+    } else {
+      router.push("/(tabs)/jobs");
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
   };
 
   // Fetch recent jobs
@@ -108,40 +126,43 @@ export default function HomeScreen() {
       <Header />
       <ScrollView style={styles.scrollView}>
         {/* Search Bar */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push("/(tabs)/jobs")}
-        >
+        <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchBar}
             placeholder="Search for jobs..."
-            editable={false}
-            pointerEvents="none"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
           />
-        </TouchableOpacity>
+          {searchQuery ? (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={clearSearch}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.searchIcon}
+              onPress={handleSearch}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="search" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {/* Job Categories */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categories}
-        >
-          <TouchableOpacity style={styles.category}>
-            <Text style={styles.categoryText}>Plumbing</Text>
-          </TouchableOpacity>
-          {/* Add more categories as needed */}
-        </ScrollView>
-        <ScrollView 
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.recentJobsHeader}>
             <Text style={styles.recentJobsTitle}>Recent Jobs Available</Text>
             <Text style={styles.recentJobsSubtitle}>
               {loading
                 ? "Loading..."
-                : `Showing ${recentJobs.length} recent jobs`}
+                : `Showing ${
+                    recentJobs.length > 0 ? recentJobs.length : jobData.length
+                  } recent jobs`}
             </Text>
           </View>
 
@@ -169,7 +190,7 @@ export default function HomeScreen() {
                     _id: job.id.toString(),
                     title: job.title,
                     description: job.company || "No description",
-                    location: job.location,
+                    location: { address: job.location },
                     price:
                       typeof job.salary === "string"
                         ? parseInt(job.salary.replace(/[^0-9]/g, "")) || 0
@@ -197,12 +218,9 @@ export default function HomeScreen() {
               style={styles.promoImage}
               resizeMode="cover"
             />
-            <Text style={styles.promoTitle}>
-              Your chance to help someone
-            </Text>
+            <Text style={styles.promoTitle}>Your chance to help someone</Text>
             <Text style={styles.promoDescription}>
-              Be the on that makes someone else's day by signing up 
-              for a job.
+              Be the one that makes someone else's day by signing up for a job.
             </Text>
             <TouchableOpacity
               style={styles.promoButton}
@@ -211,8 +229,6 @@ export default function HomeScreen() {
               <Text style={styles.promoButtonText}>Search Job</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.bottomSpace} />
         </ScrollView>
       </ScrollView>
     </SafeAreaView>
@@ -228,13 +244,38 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    position: "relative",
+  },
   searchBar: {
-    height: 40,
+    flex: 1,
+    height: 48,
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingRight: 45,
+    fontSize: 16,
+    backgroundColor: "#f9f9f9",
+  },
+  searchIcon: {
+    position: "absolute",
+    right: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 24,
+    height: 24,
+  },
+  clearButton: {
+    position: "absolute",
+    right: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 24,
+    height: 24,
   },
   categories: {
     flexDirection: "row",
@@ -295,26 +336,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  bottomSpace: {
-    height: 80,
+    paddingBottom: 24,
   },
   recentJobsHeader: {
-    marginBottom: 12,
+    marginBottom: 20,
+    alignItems: "center",
   },
   recentJobsTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#222",
+    textAlign: "center",
+    marginBottom: 8,
   },
   recentJobsSubtitle: {
     fontSize: 14,
     color: "#666",
+    textAlign: "center",
   },
   jobCardsContainer: {
     marginBottom: 24,
