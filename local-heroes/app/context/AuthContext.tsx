@@ -1,5 +1,5 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { authService } from '../services/api';
+import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback } from 'react';
+import { authService, setupResponseInterceptor } from '../services/api';
 // Using SecureStore instead of AsyncStorage for secure storage of sensitive data
 import * as SecureStore from 'expo-secure-store';
 
@@ -15,6 +15,7 @@ type User = {
   bio?: string;
   skills?: string[];
   profilePicture?: string;
+  balance: number;
   createdAt?: string;
   updatedAt?: string;
   emailVerifiedAt?: string | null;
@@ -23,6 +24,7 @@ type User = {
 // Define context type
 type AuthContextType = {
   user: User | null;
+  isLoggedIn: boolean;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -40,6 +42,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isLoggedIn = !!user;
 
   // Check if user is already logged in and validate with server
   useEffect(() => {
@@ -71,6 +75,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     loadUser();
   }, []);
+
+  // Logout function
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      await SecureStore.deleteItemAsync('user');
+      await SecureStore.deleteItemAsync('accessToken');
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setupResponseInterceptor(logout);
+  }, [logout]);
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -146,19 +169,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
   };
-  // Logout function
-  const logout = async () => {
-    try {
-      setIsLoading(true);
-      await authService.logout();
-      setUser(null);
-      await SecureStore.deleteItemAsync('user');
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }; // Update user function
+  // Update user function
   const updateUser = async (userData: Partial<User>) => {
     try {
       setIsLoading(true);
@@ -198,29 +209,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        login,
-        register,
-        logout,
-        updateUser,
-        clearError,
-      }}
+      value={{ user, isLoggedIn, isLoading, error, login, register, logout, updateUser, clearError }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the auth context
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
-};
-
-export default AuthContext;
+}

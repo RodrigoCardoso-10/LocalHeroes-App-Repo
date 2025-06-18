@@ -1,24 +1,24 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
+import { router } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  View,
   TextInput,
   TouchableOpacity,
-  Pressable,
-  Modal,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  Dimensions,
+  View,
 } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import Header from '../components/Header';
-import Slider from '@react-native-community/slider';
+import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 import { Task, TaskFilters, TasksResponse } from '../types/task';
 
@@ -85,6 +85,8 @@ export default function JobsScreen() {
   const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
   const [selectedDatePosted, setSelectedDatePosted] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortOption, setSortOption] = useState('latest');
+  const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [scrollPosition, setScrollPosition] = useState(0); // Backend integration state
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -184,22 +186,21 @@ export default function JobsScreen() {
   };
 
   // Map-related functions
-  const getCoordinatesForLocation = (location: string): { latitude: number; longitude: number } => {
-    // Check if it's one of our known Dutch cities
-    if (DUTCH_CITIES_COORDS[location]) {
-      return DUTCH_CITIES_COORDS[location];
+  const getCoordinatesForLocation = (task: Task): { latitude: number; longitude: number } | null => {
+    if (task.location?.point?.coordinates && task.location.point.coordinates.length === 2) {
+      return {
+        latitude: task.location.point.coordinates[1],
+        longitude: task.location.point.coordinates[0],
+      };
     }
 
-    // If not found, place it randomly around Netherlands
-    const baseLatitude = 52.1326;
-    const baseLongitude = 5.2913;
-    const randomOffsetLat = (Math.random() - 0.5) * 2;
-    const randomOffsetLng = (Math.random() - 0.5) * 2;
+    // Fallback for older data or data without coordinates
+    const locationName = getLocationAddress(task.location);
+    if (locationName && DUTCH_CITIES_COORDS[locationName]) {
+      return DUTCH_CITIES_COORDS[locationName];
+    }
 
-    return {
-      latitude: baseLatitude + randomOffsetLat,
-      longitude: baseLongitude + randomOffsetLng,
-    };
+    return null;
   };
 
   const getMarkerColor = (category?: string) => {
@@ -250,13 +251,31 @@ export default function JobsScreen() {
     }
   };
 
+  const getLocationAddress = (location: any): string => {
+    if (!location) {
+      return 'Unknown Location';
+    }
+    if (typeof location === 'string') {
+      return location;
+    }
+    if (typeof location === 'object') {
+      if (location.address) {
+        return location.address;
+      }
+      if (location.point?.coordinates) {
+        return `${location.point.coordinates[1].toFixed(4)}, ${location.point.coordinates[0].toFixed(4)}`;
+      }
+    }
+    return 'Unknown Location';
+  };
+
   const generateMapHTML = () => {
     const markersJS = jobsWithCoordinates.map((job) => ({
       id: job._id,
       lat: job.coordinate.latitude,
       lng: job.coordinate.longitude,
       title: job.title,
-      location: job.location,
+      location: getLocationAddress(job.location),
       price: job.price,
       category: job.category || 'General',
       color: getMarkerColor(job.category),
@@ -285,7 +304,7 @@ export default function JobsScreen() {
       <div id="map"></div>
       <script>
         try {
-          const map = L.map('map').setView([52.1326, 5.2913], 7);
+          const map = L.map('map').setView([52.3676, 4.9041], 7);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
@@ -317,7 +336,7 @@ export default function JobsScreen() {
             if (data === 'refresh') {
               location.reload();
             } else if (data === 'recenter') {
-              map.setView([52.1326, 5.2913], 7);
+              map.setView([52.3676, 4.9041], 7);
             }
           }
 
@@ -395,7 +414,7 @@ export default function JobsScreen() {
 
       const filters: TaskFilters = {
         page,
-        limit: 10,
+        limit: viewMode === 'map' ? 500 : 10,
       }; // Apply filters
       if (searchText.trim()) {
         filters.search = searchText.trim();
@@ -421,30 +440,31 @@ export default function JobsScreen() {
       if (selectedTags.length > 0) {
         filters.tags = selectedTags;
       }
+      if (sortOption) {
+        filters.sortBy = sortOption;
+      }
 
       const response: TasksResponse = await authService.getTasks(filters); // Check if component is still mounted before updating state
       if (!isMountedRef.current) return;
 
       if (resetResults || page === 1) {
         setTasks(response.tasks);
-        // Also create jobs with coordinates for map view
-        const jobMarkers: JobMarker[] = response.tasks
-          .filter((job: Task) => job.location)
-          .map((job: Task) => ({
-            ...job,
-            coordinate: getCoordinatesForLocation(job.location || ''),
-          }));
-        setJobsWithCoordinates(jobMarkers);
       } else {
         setTasks((prev) => [...prev, ...response.tasks]);
-        // For pagination, append to existing map markers
-        const newJobMarkers: JobMarker[] = response.tasks
-          .filter((job: Task) => job.location)
-          .map((job: Task) => ({
-            ...job,
-            coordinate: getCoordinatesForLocation(job.location || ''),
-          }));
-        setJobsWithCoordinates((prev) => [...prev, ...newJobMarkers]);
+      }
+
+      // Also create jobs with coordinates for map view
+      const jobMarkers = response.tasks
+        .map((job) => ({
+          ...job,
+          coordinate: getCoordinatesForLocation(job),
+        }))
+        .filter((job): job is JobMarker => job.coordinate !== null);
+
+      if (resetResults || page === 1) {
+        setJobsWithCoordinates(jobMarkers);
+      } else {
+        setJobsWithCoordinates((prev) => [...prev, ...jobMarkers]);
       }
 
       setTotalResults(response.total);
@@ -519,7 +539,16 @@ export default function JobsScreen() {
     selectedDatePosted,
     selectedTags,
     paymentRange,
+    sortOption,
+    viewMode,
   ]);
+
+  // Sort options
+  const sortOptions = [
+    { label: 'Sort by Latest', value: 'latest' },
+    { label: 'Price: Low to High', value: 'price-asc' },
+    { label: 'Price: High to Low', value: 'price-desc' },
+  ];
 
   // Helper functions for status styling
   const getStatusBadgeStyle = (status: string) => {
@@ -551,10 +580,12 @@ export default function JobsScreen() {
         return { color: '#495057' };
     }
   };
+
+  const { user } = useAuth();
+
   return (
     <SafeAreaView style={styles.container}>
       <Header />
-
       {/* View Toggle */}
       <View style={styles.viewToggleContainer}>
         <TouchableOpacity
@@ -574,319 +605,347 @@ export default function JobsScreen() {
       </View>
 
       {viewMode === 'list' ? (
-        /* List View */
         <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={true}
-          contentContainerStyle={styles.scrollViewContent}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#2A9D8F']}
-              tintColor="#2A9D8F"
-              title="Pull to refresh"
-              titleColor="#666"
-            />
-          }
-          onScroll={(event) => {
-            setScrollPosition(event.nativeEvent.contentOffset.y);
-          }}
-          onMomentumScrollEnd={(event) => {
-            setScrollPosition(event.nativeEvent.contentOffset.y);
-          }}
-          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-          keyboardShouldPersistTaps="handled"
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          {/* Top Buttons Row */}
-          <View style={styles.topButtonsRow}>
-            {/* Filters Button */}
-            <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
-              <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
-              <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
-            </TouchableOpacity>
-            {/* Clear Filters Button */}
-            <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
-              <Ionicons name="trash-outline" size={16} color="#666" />
-              <Text style={styles.clearFiltersButtonText}>Clear</Text>
-            </TouchableOpacity>
-            {/* Post Job Button */}
-            <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
-              <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.postJobButtonText}>Post a Job</Text>
-            </TouchableOpacity>
-          </View>
-          {showFilters && (
-            <>
-              {/* Search Section */}
-              <View style={styles.searchSection}>
-                <Text style={styles.sectionTitle}>Search by Job Title</Text>
-                <View style={styles.searchInputContainer}>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Job title"
-                    value={searchText}
-                    onChangeText={setSearchText}
-                  />
-                </View>
-              </View>
-
-              {/* Location Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Location</Text>
-                <TouchableOpacity
-                  style={styles.locationSelector}
-                  onPress={() => {
-                    // Store current scroll position before showing cities
-                    setShowCities(!showCities);
-                  }}
-                >
-                  <Ionicons name="location-outline" size={16} color="#999" />
-                  <Text style={styles.locationText}>{selectedLocation ? selectedLocation : 'Choose city'}</Text>
-                  <Ionicons
-                    name={showCities ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color="#999"
-                    style={styles.chevron}
-                  />
-                </TouchableOpacity>
-
-                {/* City selection modal */}
-                <Modal
-                  visible={showCities}
-                  transparent={true}
-                  animationType="fade"
-                  onRequestClose={() => setShowCities(false)}
-                >
-                  <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCities(false)}>
-                    <View style={styles.modalContainer}>
-                      <View style={styles.citiesDropdownContainer}>
-                        <View style={styles.citiesDropdownHeader}>
-                          <Text style={styles.citiesDropdownTitle}>Select a city</Text>
-                          <TouchableOpacity onPress={() => setShowCities(false)}>
-                            <Ionicons name="close" size={24} color="#333" />
-                          </TouchableOpacity>
-                        </View>
-                        <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
-                          {dutchCities.map((city, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.cityItem}
-                              onPress={() => {
-                                setSelectedLocation(city);
-                                setShowCities(false);
-                              }}
-                            >
-                              <Text style={[styles.cityText, selectedLocation === city && styles.selectedCityText]}>
-                                {city}
-                              </Text>
-                              {selectedLocation === city && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                </Modal>
-              </View>
-
-              {/* Category Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Category</Text>
-                {categories.map((category, index) => (
-                  <CustomCheckbox
-                    key={index}
-                    checked={selectedCategories.includes(category.name)}
-                    onPress={() => toggleCategory(category.name)}
-                    label={category.name}
-                    count={category.count}
-                  />
-                ))}
-                <TouchableOpacity style={styles.showMoreButton}>
-                  <Text style={styles.showMoreText}>Show More</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Experience Level Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Experience Level</Text>
-                {experienceLevels.map((level, index) => (
-                  <CustomCheckbox
-                    key={index}
-                    checked={selectedExperience.includes(level.name)}
-                    onPress={() => toggleExperience(level.name)}
-                    label={level.name}
-                    count={level.count}
-                  />
-                ))}
-              </View>
-
-              {/* Date Posted Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Date Posted</Text>
-                {datePostedOptions.map((option, index) => (
-                  <CustomCheckbox
-                    key={index}
-                    checked={selectedDatePosted.includes(option.name)}
-                    onPress={() => toggleDatePosted(option.name)}
-                    label={option.name}
-                    count={option.count}
-                  />
-                ))}
-              </View>
-
-              {/* Payment Range Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Payment</Text>
-                <View style={styles.sliderContainer}>
-                  <Slider
-                    style={styles.slider}
-                    minimumValue={0}
-                    maximumValue={999}
-                    value={paymentRange[1]}
-                    onValueChange={(value: number) => setPaymentRange([0, Math.round(value)])}
-                    minimumTrackTintColor="#2A9D8F"
-                    maximumTrackTintColor="#E9ECEF"
-                    thumbTintColor="#2A9D8F"
-                  />
-                </View>
-                <View style={styles.paymentRangeTextContainer}>
-                  <Text style={styles.paymentRangeText}>Payment: 0€ - {paymentRange[1]}€</Text>
-                  <TouchableOpacity style={styles.applyButton}>
-                    <Text style={styles.applyButtonText}>Apply</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Tags Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.sectionTitle}>Tags</Text>
-                <View style={styles.tagsContainer}>
-                  {tags.map((tag, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[styles.tagButton, selectedTags.includes(tag) && styles.tagButtonSelected]}
-                      onPress={() => toggleTag(tag)}
-                    >
-                      <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextSelected]}>{tag}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </>
-          )}
-          {/* Results Count */}
-          <View style={styles.resultsContainer}>
-            <Text style={styles.resultsText}>
-              {loading ? 'Loading...' : `Showing 1-${Math.min(tasks.length, totalResults)} of ${totalResults} results`}
-            </Text>
-            <TouchableOpacity style={styles.sortButton}>
-              <Text style={styles.sortButtonText}>Sort by latest</Text>
-              <Ionicons name="chevron-down" size={16} color="#333" />
-            </TouchableOpacity>
-          </View>
-          {/* Task Cards */}
-          {loading && tasks.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#2A9D8F" />
-              <Text style={styles.loadingText}>Loading jobs...</Text>
+          {/* List View */}
+          <View style={styles.scrollView}>
+            {/* Top Buttons Row */}
+            <View style={styles.topButtonsRow}>
+              {/* Filters Button */}
+              <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
+                <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
+                <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
+              </TouchableOpacity>
+              {/* Clear Filters Button */}
+              <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
+                <Ionicons name="trash-outline" size={16} color="#666" />
+                <Text style={styles.clearFiltersButtonText}>Clear</Text>
+              </TouchableOpacity>
+              {/* Post Job Button */}
+              <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
+                <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.postJobButtonText}>Post a Job</Text>
+              </TouchableOpacity>
             </View>
-          ) : tasks.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="briefcase-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyTitle}>No jobs found</Text>
-              <Text style={styles.emptySubtitle}>Try adjusting your filters or search criteria</Text>
-            </View>
-          ) : (
-            <View style={styles.tasksContainer}>
-              {tasks.map((task) => (
-                <TouchableOpacity
-                  key={task._id}
-                  style={styles.taskCard}
-                  onPress={() => router.push(`/jobs/${task._id}` as any)}
-                >
-                  <View style={styles.taskHeader}>
-                    <Text style={styles.taskTitle}>{task.title}</Text>
-                    <Text style={styles.taskPrice}>€{task.price}</Text>
+            {showFilters && (
+              <>
+                {/* Search Section */}
+                <View style={styles.searchSection}>
+                  <Text style={styles.sectionTitle}>Search by Job Title</Text>
+                  <View style={styles.searchInputContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Job title"
+                      value={searchText}
+                      onChangeText={setSearchText}
+                    />
                   </View>
-                  <Text style={styles.taskDescription} numberOfLines={2}>
-                    {task.description}
-                  </Text>
-                  <View style={styles.taskMeta}>
-                    {task.location && (
-                      <View style={styles.taskMetaItem}>
-                        <Ionicons name="location-outline" size={14} color="#666" />
-                        <Text style={styles.taskMetaText}>{task.location}</Text>
-                      </View>
-                    )}
-                    {task.category && (
-                      <View style={styles.taskMetaItem}>
-                        <Ionicons name="pricetag-outline" size={14} color="#666" />
-                        <Text style={styles.taskMetaText}>{task.category}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.taskFooter}>
-                    <View style={styles.taskPoster}>
-                      <View style={styles.posterAvatar}>
-                        <Text style={styles.posterInitial}>{task.postedBy.firstName?.charAt(0) || 'U'}</Text>
-                      </View>
-                      <Text style={styles.posterName}>
-                        {task.postedBy.firstName} {task.postedBy.lastName}
-                      </Text>
-                    </View>
+                </View>
 
-                    <View style={[styles.statusBadge, getStatusBadgeStyle(task.status)]}>
-                      <Text style={[styles.statusText, getStatusTextStyle(task.status)]}>
-                        {task.status.replace('_', ' ')}
-                      </Text>
-                    </View>
-                  </View>
-                  {task.tags && task.tags.length > 0 && (
-                    <View style={styles.taskTags}>
-                      {task.tags.slice(0, 3).map((tag, index) => (
-                        <View key={index} style={styles.taskTag}>
-                          <Text style={styles.taskTagText}>{tag}</Text>
-                        </View>
-                      ))}
-                      {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
-                    </View>
-                  )}
-                  {/* Apply Now Button */}
+                {/* Location Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Location</Text>
                   <TouchableOpacity
-                    style={[styles.applyButton, { marginTop: 10 }]}
-                    onPress={async () => {
-                      try {
-                        await authService.applyForTask(task._id);
-                        Alert.alert('Application Sent', 'You have applied for this job.');
-                      } catch (error: any) {
-                        Alert.alert('Error', error.message || 'Failed to apply for this job.');
-                      }
+                    style={styles.locationSelector}
+                    onPress={() => {
+                      // Store current scroll position before showing cities
+                      setShowCities(!showCities);
                     }}
                   >
-                    <Text style={styles.applyButtonText}>Apply Now</Text>
+                    <Ionicons name="location-outline" size={16} color="#999" />
+                    <Text style={styles.locationText}>{selectedLocation ? selectedLocation : 'Choose city'}</Text>
+                    <Ionicons
+                      name={showCities ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color="#999"
+                      style={styles.chevron}
+                    />
                   </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
 
-              {/* Load More Button */}
-              {currentPage < totalPages && (
-                <TouchableOpacity
-                  style={styles.loadMoreButton}
-                  onPress={() => loadTasks(currentPage + 1, false)}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#2A9D8F" />
-                  ) : (
-                    <Text style={styles.loadMoreText}>Load More Jobs</Text>
-                  )}
-                </TouchableOpacity>
-              )}
+                  {/* City selection modal */}
+                  <Modal
+                    visible={showCities}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowCities(false)}
+                  >
+                    <TouchableOpacity
+                      style={styles.modalOverlay}
+                      activeOpacity={1}
+                      onPress={() => setShowCities(false)}
+                    >
+                      <View style={styles.modalContainer}>
+                        <View style={styles.citiesDropdownContainer}>
+                          <View style={styles.citiesDropdownHeader}>
+                            <Text style={styles.citiesDropdownTitle}>Select a city</Text>
+                            <TouchableOpacity onPress={() => setShowCities(false)}>
+                              <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                          </View>
+                          <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
+                            {dutchCities.map((city, index) => (
+                              <TouchableOpacity
+                                key={index}
+                                style={styles.cityItem}
+                                onPress={() => {
+                                  setSelectedLocation(city);
+                                  setShowCities(false);
+                                }}
+                              >
+                                <Text style={[styles.cityText, selectedLocation === city && styles.selectedCityText]}>
+                                  {city}
+                                </Text>
+                                {selectedLocation === city && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </Modal>
+                </View>
+
+                {/* Category Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Category</Text>
+                  {categories.map((category, index) => (
+                    <CustomCheckbox
+                      key={index}
+                      checked={selectedCategories.includes(category.name)}
+                      onPress={() => toggleCategory(category.name)}
+                      label={category.name}
+                      count={category.count}
+                    />
+                  ))}
+                  <TouchableOpacity style={styles.showMoreButton}>
+                    <Text style={styles.showMoreText}>Show More</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Experience Level Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Experience Level</Text>
+                  {experienceLevels.map((level, index) => (
+                    <CustomCheckbox
+                      key={index}
+                      checked={selectedExperience.includes(level.name)}
+                      onPress={() => toggleExperience(level.name)}
+                      label={level.name}
+                      count={level.count}
+                    />
+                  ))}
+                </View>
+
+                {/* Date Posted Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Date Posted</Text>
+                  {datePostedOptions.map((option, index) => (
+                    <CustomCheckbox
+                      key={index}
+                      checked={selectedDatePosted.includes(option.name)}
+                      onPress={() => toggleDatePosted(option.name)}
+                      label={option.name}
+                      count={option.count}
+                    />
+                  ))}
+                </View>
+
+                {/* Payment Range Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Payment</Text>
+                  <View style={styles.sliderContainer}>
+                    <Slider
+                      style={styles.slider}
+                      minimumValue={0}
+                      maximumValue={999}
+                      value={paymentRange[1]}
+                      onValueChange={(value: number) => setPaymentRange([0, Math.round(value)])}
+                      minimumTrackTintColor="#2A9D8F"
+                      maximumTrackTintColor="#E9ECEF"
+                      thumbTintColor="#2A9D8F"
+                    />
+                  </View>
+                  <View style={styles.paymentRangeTextContainer}>
+                    <Text style={styles.paymentRangeText}>Payment: 0€ - {paymentRange[1]}€</Text>
+                    <TouchableOpacity style={styles.applyButton}>
+                      <Text style={styles.applyButtonText}>Apply</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Tags Section */}
+                <View style={styles.filterSection}>
+                  <Text style={styles.sectionTitle}>Tags</Text>
+                  <View style={styles.tagsContainer}>
+                    {tags.map((tag, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[styles.tagButton, selectedTags.includes(tag) && styles.tagButtonSelected]}
+                        onPress={() => toggleTag(tag)}
+                      >
+                        <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextSelected]}>
+                          {tag}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </>
+            )}
+            {/* Results Count */}
+            <View style={styles.resultsContainer}>
+              <Text style={styles.resultsText}>
+                {loading
+                  ? 'Loading...'
+                  : `Showing 1-${Math.min(tasks.length, totalResults)} of ${totalResults} results`}
+              </Text>
+              <TouchableOpacity style={styles.sortButton} onPress={() => setIsSortModalVisible(true)}>
+                <Text style={styles.sortButtonText}>
+                  {sortOptions.find((o) => o.value === sortOption)?.label || 'Sort by'}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color="#333" />
+              </TouchableOpacity>
             </View>
-          )}
+            {/* Sort Modal */}
+            <Modal
+              visible={isSortModalVisible}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setIsSortModalVisible(false)}
+            >
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setIsSortModalVisible(false)}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.citiesDropdownContainer}>
+                    <View style={styles.citiesDropdownHeader}>
+                      <Text style={styles.citiesDropdownTitle}>Sort by</Text>
+                      <TouchableOpacity onPress={() => setIsSortModalVisible(false)}>
+                        <Ionicons name="close" size={24} color="#333" />
+                      </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
+                      {sortOptions.map((option, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.cityItem}
+                          onPress={() => {
+                            setSortOption(option.value);
+                            setIsSortModalVisible(false);
+                          }}
+                        >
+                          <Text style={[styles.cityText, sortOption === option.value && styles.selectedCityText]}>
+                            {option.label}
+                          </Text>
+                          {sortOption === option.value && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+            {/* Task Cards */}
+            {loading && tasks.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2A9D8F" />
+                <Text style={styles.loadingText}>Loading jobs...</Text>
+              </View>
+            ) : tasks.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="briefcase-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyTitle}>No jobs found</Text>
+                <Text style={styles.emptySubtitle}>Try adjusting your filters or search criteria</Text>
+              </View>
+            ) : (
+              <View style={styles.tasksContainer}>
+                {tasks.map((task) => (
+                  <TouchableOpacity
+                    key={task._id}
+                    style={styles.taskCard}
+                    onPress={() => router.push(`/jobs/${task._id}` as any)}
+                  >
+                    <View style={styles.taskHeader}>
+                      <Text style={styles.taskTitle}>{task.title}</Text>
+                      <Text style={styles.taskPrice}>€{task.price}</Text>
+                    </View>
+                    <Text style={styles.taskDescription} numberOfLines={2}>
+                      {task.description}
+                    </Text>
+                    <View style={styles.taskMeta}>
+                      {task.location && (
+                        <View style={styles.taskMetaItem}>
+                          <Ionicons name="location-outline" size={14} color="#666" />
+                          <Text style={styles.taskMetaText}>{getLocationAddress(task.location)}</Text>
+                        </View>
+                      )}
+                      {task.category && (
+                        <View style={styles.taskMetaItem}>
+                          <Ionicons name="pricetag-outline" size={14} color="#666" />
+                          <Text style={styles.taskMetaText}>{task.category}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.taskFooter}>
+                      <View style={styles.taskPoster}>
+                        <View style={styles.posterAvatar}>
+                          <Text style={styles.posterInitial}>{task.postedBy.firstName?.charAt(0) || 'U'}</Text>
+                        </View>
+                        <Text style={styles.posterName}>
+                          {task.postedBy.firstName} {task.postedBy.lastName}
+                        </Text>
+                      </View>
+
+                      <View style={[styles.statusBadge, getStatusBadgeStyle(task.status)]}>
+                        <Text style={[styles.statusText, getStatusTextStyle(task.status)]}>
+                          {task.status.replace('_', ' ')}
+                        </Text>
+                      </View>
+                    </View>
+                    {task.tags && task.tags.length > 0 && (
+                      <View style={styles.taskTags}>
+                        {task.tags.slice(0, 3).map((tag, index) => (
+                          <View key={index} style={styles.taskTag}>
+                            <Text style={styles.taskTagText}>{tag}</Text>
+                          </View>
+                        ))}
+                        {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
+                      </View>
+                    )}
+                    {/* Apply Now Button */}
+                    <TouchableOpacity
+                      style={[styles.applyButton, { marginTop: 10 }]}
+                      onPress={() => router.push(`/apply?id=${task._id}`)}
+                    >
+                      <Text style={styles.applyButtonText}>Apply Now</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+
+                {/* Load More Button */}
+                {currentPage < totalPages && (
+                  <TouchableOpacity
+                    style={styles.loadMoreButton}
+                    onPress={() => loadTasks(currentPage + 1, false)}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#2A9D8F" />
+                    ) : (
+                      <Text style={styles.loadMoreText}>Load More Jobs</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+          <View style={styles.bottomSpace} />
         </ScrollView>
       ) : (
         /* Map View */
@@ -916,7 +975,7 @@ export default function JobsScreen() {
               <Ionicons name="locate" size={24} color="#2A9D8F" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.mapControlButton} onPress={refreshMap}>
+            <TouchableOpacity style={styles.mapControlButton} onPress={onRefresh}>
               <Ionicons name="refresh" size={24} color="#2A9D8F" />
             </TouchableOpacity>
           </View>
@@ -925,20 +984,6 @@ export default function JobsScreen() {
             <View style={styles.mapStatItem}>
               <Text style={styles.mapStatNumber}>{jobsWithCoordinates.length}</Text>
               <Text style={styles.mapStatLabel}>Jobs Found</Text>
-            </View>
-          </View>
-          {/* Legend */}
-          <View style={styles.mapLegendContainer}>
-            <Text style={styles.mapLegendTitle}>Categories</Text>
-            <View style={styles.mapLegendItems}>
-              {['gardening', 'cleaning', 'moving', 'technology'].map((category) => (
-                <View key={category} style={styles.mapLegendItem}>
-                  <View style={[styles.mapLegendMarker, { backgroundColor: getMarkerColor(category) }]}>
-                    <Text style={styles.mapLegendIcon}>{getCategoryIcon(category)}</Text>
-                  </View>
-                  <Text style={styles.mapLegendText}>{category}</Text>
-                </View>
-              ))}
             </View>
           </View>
         </View>
@@ -951,6 +996,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  bottomSpace: {
+    height: 80,
   },
   scrollView: {
     flex: 1,
@@ -1440,7 +1495,7 @@ const styles = StyleSheet.create({
   },
   mapControls: {
     position: 'absolute',
-    top: 20,
+    top: 110,
     right: 20,
     flexDirection: 'column',
   },
@@ -1458,7 +1513,7 @@ const styles = StyleSheet.create({
   mapStatsContainer: {
     position: 'absolute',
     top: 20,
-    left: 20,
+    right: 20,
     backgroundColor: 'white',
     padding: 15,
     borderRadius: 10,
@@ -1480,51 +1535,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
-  },
-  mapLegendContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    maxWidth: width * 0.7,
-  },
-  mapLegendTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  mapLegendItems: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  mapLegendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
-    marginBottom: 5,
-  },
-  mapLegendMarker: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 5,
-  },
-  mapLegendIcon: {
-    fontSize: 10,
-  },
-  mapLegendText: {
-    fontSize: 10,
-    color: '#666',
-    textTransform: 'capitalize',
   },
 });

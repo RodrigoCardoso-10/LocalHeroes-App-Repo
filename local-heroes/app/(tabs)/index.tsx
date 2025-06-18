@@ -1,10 +1,99 @@
-import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, SafeAreaView } from 'react-native';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Header from '../components/Header';
+import JobCard from '../components/JobCard';
 import { Images } from '../constants/Images';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/api';
+import { Task } from '../types/task';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [recentJobs, setRecentJobs] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Fetch recent jobs
+  const loadRecentJobs = async () => {
+    try {
+      setLoading(true);
+      const response = await authService.getTasks({ page: 1, limit: 5 });
+      setRecentJobs(response.tasks);
+    } catch (error) {
+      console.error('Failed to load recent jobs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecentJobs();
+  }, []);
+
+  // Sample job data based on the Figma design (fallback)
+  const jobData = [
+    {
+      id: 1,
+      title: 'Financial Security Analyst',
+      company: 'Tech Solutions Inc.',
+      location: 'New York',
+      type: 'Full-time',
+      salary: '$70k - $90k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F0F8F7',
+    },
+    {
+      id: 2,
+      title: 'Software Quality Facilitator',
+      company: 'Innovate Corp.',
+      location: 'Remote',
+      type: 'Part-time',
+      salary: '$60k - $80k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F7F0F8',
+    },
+    {
+      id: 3,
+      title: 'Internal Integration Planner',
+      company: 'Global Ventures',
+      location: 'San Francisco',
+      type: 'Full-time',
+      salary: '$80k - $100k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F8F7F0',
+    },
+    {
+      id: 4,
+      title: 'District Intranet Coordinator',
+      company: 'City Connect',
+      location: 'Chicago',
+      type: 'Contract',
+      salary: '$40k - $60k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F0F8F7',
+    },
+    {
+      id: 5,
+      title: 'Customer Service Facilitator',
+      company: 'Service First',
+      location: 'Austin',
+      type: 'Full-time',
+      salary: '$50k - $70k',
+      logo: require('../../assets/images/dummy.jpg'),
+      color: '#F7F0F8',
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.container}>
       <Header />
@@ -14,26 +103,74 @@ export default function HomeScreen() {
           <TextInput style={styles.searchBar} placeholder="Search for jobs..." editable={false} pointerEvents="none" />
         </TouchableOpacity>
 
-        {/* Job Categories */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categories}>
-          <TouchableOpacity style={styles.category}>
-            <Text style={styles.categoryText}>Plumbing</Text>
-          </TouchableOpacity>
-          {/* Add more categories as needed */}
-        </ScrollView>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.recentJobsHeader}>
+            <Text style={styles.recentJobsTitle}>Recent Jobs Available</Text>
+            <Text style={styles.recentJobsSubtitle}>
+              {loading ? 'Loading...' : `Showing ${recentJobs.length} recent jobs`}
+            </Text>
+          </View>
 
-        {/* Promotional Section */}
-        <View style={styles.promoContainer}>
-          <Image source={Images.dummy} style={styles.promoImage} resizeMode="cover" />
-          <Text style={styles.promoTitle}>Good Life Begins With A Good Company</Text>
-          <Text style={styles.promoDescription}>
-            Unlock opportunities with our handpicked list of companies. Explore the offers, compare, and find the best
-            fit for you with confidence.
-          </Text>
-          <TouchableOpacity style={styles.promoButton} onPress={() => router.push('/(tabs)/jobs')}>
-            <Text style={styles.promoButtonText}>Search Job</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.jobCardsContainer}>
+            {loading ? (
+              <Text style={styles.loadingText}>Loading recent jobs...</Text>
+            ) : recentJobs.length > 0 ? (
+              recentJobs.map((job) => (
+                <JobCard
+                  key={job._id}
+                  job={job}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/jobs/[id]',
+                      params: { id: job._id },
+                    })
+                  }
+                />
+              ))
+            ) : (
+              jobData.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={{
+                    _id: job.id.toString(),
+                    title: job.title,
+                    description: job.company || 'No description',
+                    location: { address: job.location },
+                    price: typeof job.salary === 'string' ? parseInt(job.salary.replace(/[^0-9]/g, '')) || 0 : 0,
+                    category: job.type,
+                    tags: [],
+                    status: 'OPEN',
+                    postedBy: { firstName: 'Company', lastName: '' },
+                  }}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/jobs/[id]',
+                      params: { id: job.id },
+                    })
+                  }
+                />
+              ))
+            )}
+          </View>
+
+          {/* Promotional Section */}
+          <View style={styles.promoContainer}>
+            <Image source={Images.dummy} style={styles.promoImage} resizeMode="cover" />
+            <Text style={styles.promoTitle}>Your chance to help someone</Text>
+            <Text style={styles.promoDescription}>
+              Be the on that makes someone else's day by signing up for a job.
+            </Text>
+            <TouchableOpacity style={styles.promoButton} onPress={() => router.push('/(tabs)/jobs')}>
+              <Text style={styles.promoButtonText}>Search Job</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.bottomSpace} />
+        </ScrollView>
       </ScrollView>
     </SafeAreaView>
   );
@@ -113,5 +250,51 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  bottomSpace: {
+    height: 80,
+  },
+  recentJobsHeader: {
+    marginBottom: 12,
+  },
+  recentJobsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#222',
+  },
+  recentJobsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  jobCardsContainer: {
+    marginBottom: 24,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  jobNameContainer: {
+    marginBottom: 8,
+  },
+  jobName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#222',
+  },
+  jobLocation: {
+    fontSize: 14,
+    color: '#666',
+  },
+  jobPrice: {
+    fontSize: 14,
+    color: '#2BB6A3',
   },
 });

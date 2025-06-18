@@ -1,7 +1,8 @@
-import React from 'react';
-import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React from 'react';
+import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext'; // Adjusted path for AuthContext
 
 export default function SettingsScreen() {
@@ -26,13 +27,6 @@ export default function SettingsScreen() {
     ]);
   };
   const menuItems = [
-    {
-      id: 'profile',
-      title: 'Edit Profile',
-      subtitle: 'Manage your profile information',
-      icon: <Ionicons name="person-outline" size={24} color="#0ca678" />,
-      href: '/profile',
-    },
     {
       id: 'bank',
       title: 'Bank Details',
@@ -73,36 +67,30 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <MaterialCommunityIcons name="toolbox" size={24} color="white" />
-          <Text style={styles.headerTitle}>LocalHero</Text>
-        </View>
-        <TouchableOpacity style={styles.settingsIcon}>
-          <Ionicons name="settings-outline" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+      <Header />
       {/* Settings Items */}
-      <View style={styles.content}>
-        {/* Edit Profile Button - Direct navigation to profile page */}
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.navigate('/profile' as any)}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="person-outline" size={24} color="#0ca678" />
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Balance Section */}
+        <View style={styles.balanceContainer}>
+          <View style={styles.balanceHeader}>
+            <Text style={styles.balanceTitle}>Your Balance</Text>
+            <Ionicons name="wallet-outline" size={24} color="#0ca678" />
           </View>
-          <View style={styles.menuItemText}>
-            <Text style={styles.menuItemTitle}>Edit Profile</Text>
-            <Text style={styles.menuItemSubtitle}>Manage your profile information</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#ccc" />
-        </TouchableOpacity>
-        {/* Other menu items */}
-        {menuItems.slice(1).map((item) => (
-          <TouchableOpacity 
-            style={styles.menuItem} 
-            key={item.id}
-            onPress={() => router.navigate(item.href as any)}
+          <Text style={styles.balanceAmount}>€{user?.balance?.toFixed(2) ?? '0.00'}</Text>
+          <TouchableOpacity
+            style={styles.withdrawButton}
+            onPress={() => Alert.alert('Coming Soon', 'This feature is not yet available.')}
           >
+            <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
+          </TouchableOpacity>
+        </View>
+        {/* Menu Items */}
+        {menuItems.map((item) => (
+          <TouchableOpacity style={styles.menuItem} key={item.id} onPress={() => router.navigate(item.href as any)}>
             <View style={styles.iconContainer}>{item.icon}</View>
             <View style={styles.menuItemText}>
               <Text style={styles.menuItemTitle}>{item.title}</Text>
@@ -120,7 +108,8 @@ export default function SettingsScreen() {
             <Text style={styles.logoutText}>Logout</Text>
           </View>
         </TouchableOpacity>
-      </View>
+        <View style={styles.bottomSpace} />
+      </ScrollView>
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
@@ -174,7 +163,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 16,
+    paddingBottom: 32,
   },
   menuItem: {
     flexDirection: 'row',
@@ -261,5 +253,47 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  bottomSpace: {
+    height: 80,
+  },
+  balanceContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  balanceTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  balanceAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#0ca678',
+    marginBottom: 20,
+  },
+  withdrawButton: {
+    backgroundColor: '#0ca678',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  withdrawButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

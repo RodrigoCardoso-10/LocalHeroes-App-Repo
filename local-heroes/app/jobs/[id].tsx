@@ -62,8 +62,17 @@ export default function JobDetailScreen() {
   const handleApply = async () => {
     if (!job) return;
 
+    setApplying(true);
     try {
-      setApplying(true);
+      // Re-fetch the job details to ensure the status is current
+      const latestJob = await authService.getTask(job._id);
+      setJob(latestJob); // Update the state with the latest data
+
+      if (latestJob.status !== 'OPEN') {
+        Alert.alert('Application Failed', 'This job is no longer open for applications.');
+        return;
+      }
+
       await authService.applyForTask(job._id);
       Alert.alert(
         'Application Sent!',
@@ -72,10 +81,40 @@ export default function JobDetailScreen() {
       );
     } catch (error: any) {
       console.error('Failed to apply for job:', error);
-      Alert.alert('Error', error.message || 'Failed to apply for job');
+
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to apply for job';
+
+      if (errorMessage === 'Task is not open for applications.') {
+        Alert.alert(
+          'Application Failed',
+          'This job is no longer available for applications. It may have been accepted by another user or cancelled.'
+        );
+        // Refresh the job details to show the latest status in the UI
+        loadJobDetails();
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
     } finally {
       setApplying(false);
     }
+  };
+
+  const getLocationAddress = (location: any): string => {
+    if (!location) {
+      return 'Unknown Location';
+    }
+    if (typeof location === 'string') {
+      return location;
+    }
+    if (typeof location === 'object') {
+      if (location.address) {
+        return location.address;
+      }
+      if (location.point?.coordinates) {
+        return `${location.point.coordinates[1].toFixed(4)}, ${location.point.coordinates[0].toFixed(4)}`;
+      }
+    }
+    return 'Unknown Location';
   };
 
   const handleContact = () => {
@@ -108,7 +147,7 @@ export default function JobDetailScreen() {
 
     try {
       await Share.share({
-        message: `Check out this job: ${job.title} - €${job.price} in ${job.location}`,
+        message: `Check out this job: ${job.title} - €${job.price} in ${getLocationAddress(job.location)}`,
         title: job.title,
       });
     } catch (error) {
@@ -236,7 +275,7 @@ export default function JobDetailScreen() {
           <View style={styles.jobMeta}>
             <View style={styles.metaItem}>
               <Ionicons name="location-outline" size={16} color="#666" />
-              <Text style={styles.metaText}>{job.location}</Text>
+              <Text style={styles.metaText}>{getLocationAddress(job.location)}</Text>
             </View>
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={16} color="#666" />
@@ -317,12 +356,12 @@ export default function JobDetailScreen() {
             <View style={styles.statItem}>
               <Ionicons name="eye-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Views</Text>
-              <Text style={styles.statValue}>24</Text>
+              <Text style={styles.statValue}>{job.views ?? 0}</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Applicants</Text>
-              <Text style={styles.statValue}>5</Text>
+              <Text style={styles.statValue}>{job.applicants?.length ?? 0}</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="calendar-outline" size={20} color="#666" />

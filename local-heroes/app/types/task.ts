@@ -22,7 +22,13 @@ export interface Task {
     lastName: string;
     skills?: string[];
   } | null;
-  location?: string;
+  location?: {
+    address?: string;
+    point?: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
+  };
   price: number;
   dueDate?: string;
   category?: string;
@@ -30,6 +36,8 @@ export interface Task {
   experienceLevel?: string;
   createdAt: string;
   updatedAt: string;
+  applicants?: any[];
+  views?: number;
 }
 
 export interface TaskFilters {
@@ -44,6 +52,7 @@ export interface TaskFilters {
   experienceLevel?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
 }
 
 export interface TasksResponse {
@@ -57,7 +66,10 @@ export interface TasksResponse {
 export interface CreateTaskData {
   title: string;
   description: string;
-  location?: string;
+  location?: {
+    address?: string;
+    coordinates?: [number, number];
+  };
   price: number;
   dueDate?: string;
   category?: string;
@@ -68,7 +80,10 @@ export interface CreateTaskData {
 export interface UpdateTaskData {
   title?: string;
   description?: string;
-  location?: string;
+  location?: {
+    address?: string;
+    coordinates?: [number, number];
+  };
   price?: number;
   dueDate?: string;
   category?: string;

@@ -8,13 +8,13 @@ interface TabIcon {
   label: string;
 }
 
-const TAB_ICONS_MAP: Record<string, TabIcon> = {
-  index: { name: 'home', label: 'Home' },
-  jobs: { name: 'briefcase', label: 'Jobs' },
-  post: { name: 'plus', label: 'Post' },
-  inbox: { name: 'envelope', label: 'Inbox' },
-  settings: { name: 'gear', label: 'Settings' },
-};
+const TAB_ICONS: TabIcon[] = [
+  { name: 'home', label: 'Home' },
+  { name: 'briefcase', label: 'Jobs' },
+  { name: 'plus', label: 'Post' },
+  { name: 'envelope', label: 'Inbox' },
+  { name: 'user', label: 'Profile' },
+];
 
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   // Create animated values for each tab
@@ -26,24 +26,16 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     }))
   ).current;
 
-  // Update animations when the active tab changes
   useEffect(() => {
     state.routes.forEach((_, index) => {
       const isActive = state.index === index;
-      const animations = [];
+      let animations = [];
 
-      // Scale animation
       animations.push(
         Animated.spring(animatedValues[index].scale, {
           toValue: isActive ? 1.2 : 1,
           useNativeDriver: true,
-          tension: 50,
-          friction: 7,
-        })
-      );
-
-      // Opacity animation for label
-      animations.push(
+        }),
         Animated.timing(animatedValues[index].opacity, {
           toValue: isActive ? 1 : 0,
           duration: 200,
@@ -63,20 +55,25 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
       Animated.parallel(animations).start();
     });
-  }, [state.index]);
+  }, [state.index, state.routes, animatedValues]);
 
   return (
     <View style={styles.tabBarContainer}>
-      {/* Wavy background */}
       <View style={styles.wavyBackground}>
         <View style={styles.wave} />
       </View>
       <View style={styles.tabBar}>
-        {state.routes.map((route, index) => {
+        {state.routes.filter(Boolean).map((route, index) => {
           const isFocused = state.index === index;
-          const icon = TAB_ICONS_MAP[route.name] || { name: 'home', label: 'Unknown' };
+          const icon = TAB_ICONS[index];
+
+          if (!icon) return null;
+
           const animatedStyle = {
-            transform: [{ scale: animatedValues[index].scale }, { translateY: animatedValues[index].translateY }],
+            transform: [
+              { scale: animatedValues[index].scale },
+              { translateY: animatedValues[index].translateY },
+            ],
           };
 
           return (
@@ -88,22 +85,42 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               style={index === 2 ? styles.centerTabButton : styles.tabButton}
               activeOpacity={0.8}
             >
-              <Animated.View
+              {isFocused ? (
+                <Animated.View
+                  style={[
+                    styles.tabIconContainer,
+                    styles.activeTabCircle,
+                    index === 2 && styles.centerTabCircle,
+                    animatedStyle,
+                  ]}
+                >
+                  <FontAwesome
+                    name={icon.name}
+                    size={index === 2 ? 28 : 24}
+                    color="#fff"
+                  />
+                </Animated.View>
+              ) : (
+                <Animated.View
+                  style={[
+                    styles.tabIconContainer,
+                    index === 2 && styles.centerTabCircle,
+                    animatedStyle,
+                  ]}
+                >
+                  <FontAwesome
+                    name={icon.name}
+                    size={index === 2 ? 28 : 24}
+                    color="#fff"
+                  />
+                </Animated.View>
+              )}
+              <Animated.Text 
                 style={[
-                  styles.tabIconContainer,
-                  isFocused && styles.activeTabCircle,
-                  index === 2 && styles.centerTabCircle,
-                  animatedStyle,
+                  styles.tabLabel, 
+                  { opacity: animatedValues[index].opacity }
                 ]}
               >
-                <FontAwesome
-                  name={icon.name}
-                  size={index === 2 ? 28 : 24}
-                  color={isFocused ? '#fff' : '#fff'}
-                  style={isFocused ? { color: '#2BB6A3' } : {}}
-                />
-              </Animated.View>
-              <Animated.Text style={[styles.tabLabel, { opacity: animatedValues[index].opacity }]}>
                 {icon.label}
               </Animated.Text>
             </TouchableOpacity>
