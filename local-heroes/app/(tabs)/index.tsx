@@ -139,7 +139,7 @@ export default function HomeScreen() {
                     _id: job.id.toString(),
                     title: job.title,
                     description: job.company || 'No description',
-                    location: job.location,
+                    location: { address: job.location },
                     price: typeof job.salary === 'string' ? parseInt(job.salary.replace(/[^0-9]/g, '')) || 0 : 0,
                     category: job.type,
                     tags: [],

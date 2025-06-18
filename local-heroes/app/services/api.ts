@@ -288,6 +288,8 @@ export const authService = {
     experienceLevel?: string;
     page?: number;
     limit?: number;
+    acceptedBy?: string;
+    postedBy?: string;
   }) => {
     try {
       const params = new URLSearchParams();

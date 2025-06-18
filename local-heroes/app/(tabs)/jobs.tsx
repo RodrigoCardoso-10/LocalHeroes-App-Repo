@@ -414,7 +414,7 @@ export default function JobsScreen() {
 
       const filters: TaskFilters = {
         page,
-        limit: 10,
+        limit: viewMode === 'map' ? 500 : 10,
       }; // Apply filters
       if (searchText.trim()) {
         filters.search = searchText.trim();
@@ -540,6 +540,7 @@ export default function JobsScreen() {
     selectedTags,
     paymentRange,
     sortOption,
+    viewMode,
   ]);
 
   // Sort options
@@ -920,14 +921,7 @@ export default function JobsScreen() {
                     {/* Apply Now Button */}
                     <TouchableOpacity
                       style={[styles.applyButton, { marginTop: 10 }]}
-                      onPress={async () => {
-                        try {
-                          await authService.applyForTask(task._id);
-                          Alert.alert('Application Sent', 'You have applied for this job.');
-                        } catch (error: any) {
-                          Alert.alert('Error', error.message || 'Failed to apply for this job.');
-                        }
-                      }}
+                      onPress={() => router.push(`/apply?id=${task._id}`)}
                     >
                       <Text style={styles.applyButtonText}>Apply Now</Text>
                     </TouchableOpacity>
@@ -990,20 +984,6 @@ export default function JobsScreen() {
             <View style={styles.mapStatItem}>
               <Text style={styles.mapStatNumber}>{jobsWithCoordinates.length}</Text>
               <Text style={styles.mapStatLabel}>Jobs Found</Text>
-            </View>
-          </View>
-          {/* Legend */}
-          <View style={styles.mapLegendContainer}>
-            <Text style={styles.mapLegendTitle}>Categories</Text>
-            <View style={styles.mapLegendItems}>
-              {['gardening', 'cleaning', 'moving', 'technology'].map((category) => (
-                <View key={category} style={styles.mapLegendItem}>
-                  <View style={[styles.mapLegendMarker, { backgroundColor: getMarkerColor(category) }]}>
-                    <Text style={styles.mapLegendIcon}>{getCategoryIcon(category)}</Text>
-                  </View>
-                  <Text style={styles.mapLegendText}>{category}</Text>
-                </View>
-              ))}
             </View>
           </View>
         </View>
@@ -1555,51 +1535,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
-  },
-  mapLegendContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    maxWidth: width * 0.7,
-  },
-  mapLegendTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  mapLegendItems: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  mapLegendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
-    marginBottom: 5,
-  },
-  mapLegendMarker: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 5,
-  },
-  mapLegendIcon: {
-    fontSize: 10,
-  },
-  mapLegendText: {
-    fontSize: 10,
-    color: '#666',
-    textTransform: 'capitalize',
   },
 });

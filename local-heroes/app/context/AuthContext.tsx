@@ -15,6 +15,7 @@ type User = {
   bio?: string;
   skills?: string[];
   profilePicture?: string;
+  balance: number;
   createdAt?: string;
   updatedAt?: string;
   emailVerifiedAt?: string | null;
