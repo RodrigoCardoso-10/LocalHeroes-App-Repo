@@ -1,5 +1,5 @@
-import React from 'react';
 import { Stack } from 'expo-router';
+import React from 'react';
 import { AuthProvider } from './context/AuthContext';
 
 export default function RootLayout() {
@@ -12,6 +12,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="customer-support" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="jobs/[id]" options={{ headerShown: false }} />
       </Stack>
     </AuthProvider>
   );

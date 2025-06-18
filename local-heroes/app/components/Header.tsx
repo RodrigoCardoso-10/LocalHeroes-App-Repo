@@ -1,78 +1,55 @@
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Images } from '../constants/Images';
+import { Ionicons } from "@expo/vector-icons";
+import { Link } from "expo-router";
+import React from "react";
+import { Image, StyleSheet, Text, View } from "react-native";
 
-interface HeaderProps {
-  showAuthButtons?: boolean;
-}
-
-export default function Header({ showAuthButtons = true }: HeaderProps) {
+export default function Header() {
   return (
     <View style={styles.headerContainer}>
-      <View style={styles.headerLeft}>
-        <Image source={Images.logo} style={styles.headerLogo} />
-        <Text style={styles.headerTitle}>LocalHeroes</Text>
-      </View>
-      {showAuthButtons && (
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.loginButton}>
-            <Text style={styles.loginText}>Login</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.registerButton}>
-            <Text style={styles.registerText}>Register</Text>
-          </TouchableOpacity>
+      <Link href="/(tabs)" asChild>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../../assets/images/logo.jpg")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitle}>LocalHero</Text>
         </View>
-      )}
+      </Link>
+      <Link href="/settings" asChild>
+        <View style={styles.settingsIcon}>
+          <Ionicons name="settings-outline" size={28} color="#fff" />
+        </View>
+      </Link>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#000",
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  logoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  headerLogo: {
-    width: 32,
-    height: 32,
+  logo: {
+    width: 28,
+    height: 28,
     marginRight: 8,
+    borderRadius: 6,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#222',
+    fontWeight: "bold",
+    color: "#fff",
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  settingsIcon: {
+    padding: 8,
   },
-  loginButton: {
-    marginRight: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    backgroundColor: '#e0e0e0',
-  },
-  loginText: {
-    color: '#222',
-    fontWeight: '500',
-  },
-  registerButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    backgroundColor: '#2bb6a3',
-  },
-  registerText: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-}); 
+});

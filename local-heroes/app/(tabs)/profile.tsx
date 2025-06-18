@@ -1,4 +1,4 @@
 import React from 'react';
-export default function Settings() {
+export default function Profile() {
   return <></>;
-}
+} 

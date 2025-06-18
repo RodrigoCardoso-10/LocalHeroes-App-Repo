@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { authService } from '../services/api';
 // Using SecureStore instead of AsyncStorage for secure storage of sensitive data
 import * as SecureStore from 'expo-secure-store';
@@ -23,6 +23,7 @@ type User = {
 // Define context type
 type AuthContextType = {
   user: User | null;
+  isLoggedIn: boolean;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -40,6 +41,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isLoggedIn = !!user;
 
   // Check if user is already logged in and validate with server
   useEffect(() => {
@@ -197,30 +200,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
   };
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        login,
-        register,
-        logout,
-        updateUser,
-        clearError,
-      }}
-    >
+    <AuthContext.Provider value={{ user, isLoggedIn, isLoading, error, login, register, logout, updateUser, clearError }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-// Custom hook to use the auth context
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
-};
-
-export default AuthContext;
+}

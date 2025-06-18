@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  SafeAreaView,
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import Header from '../components/Header';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
 import { Notification, NotificationsResponse, NotificationType } from '../types/notification';
@@ -135,7 +134,6 @@ export default function InboxScreen() {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#2A9D8F" />
           <Text style={styles.loadingText}>Loading notifications...</Text>
@@ -145,7 +143,6 @@ export default function InboxScreen() {
   }
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
       <View style={styles.headerContainer}>
         <Text style={styles.title}>Inbox</Text>
         <View style={styles.badgeContainer}>

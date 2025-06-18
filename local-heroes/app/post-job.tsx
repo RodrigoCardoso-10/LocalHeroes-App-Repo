@@ -1,20 +1,18 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  Alert,
-  ActivityIndicator,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import Header from './components/Header';
-import { authService } from './services/api';
 import { useAuth } from './context/AuthContext';
+import { authService } from './services/api';
 
 export default function PostJobScreen() {
   const { user } = useAuth();
@@ -121,7 +119,6 @@ export default function PostJobScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
           <Text style={styles.title}>Post a Job</Text>
