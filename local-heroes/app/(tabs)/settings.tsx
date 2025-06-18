@@ -28,13 +28,6 @@ export default function SettingsScreen() {
   };
   const menuItems = [
     {
-      id: 'profile',
-      title: 'Edit Profile',
-      subtitle: 'Manage your profile information',
-      icon: <Ionicons name="person-outline" size={24} color="#0ca678" />,
-      href: '/profile',
-    },
-    {
       id: 'bank',
       title: 'Bank Details',
       subtitle: 'Manage you account details',
@@ -77,19 +70,8 @@ export default function SettingsScreen() {
       <Header />
       {/* Settings Items */}
       <View style={styles.content}>
-        {/* Edit Profile Button - Direct navigation to profile page */}
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.navigate('/profile' as any)}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="person-outline" size={24} color="#0ca678" />
-          </View>
-          <View style={styles.menuItemText}>
-            <Text style={styles.menuItemTitle}>Edit Profile</Text>
-            <Text style={styles.menuItemSubtitle}>Manage your profile information</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#ccc" />
-        </TouchableOpacity>
-        {/* Other menu items */}
-        {menuItems.slice(1).map((item) => (
+        {/* Menu Items */}
+        {menuItems.map((item) => (
           <TouchableOpacity 
             style={styles.menuItem} 
             key={item.id}
