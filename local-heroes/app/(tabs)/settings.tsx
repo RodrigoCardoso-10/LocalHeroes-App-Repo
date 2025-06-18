@@ -1,7 +1,8 @@
-import React from 'react';
-import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React from 'react';
+import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext'; // Adjusted path for AuthContext
 
 export default function SettingsScreen() {
@@ -73,16 +74,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <MaterialCommunityIcons name="toolbox" size={24} color="white" />
-          <Text style={styles.headerTitle}>LocalHero</Text>
-        </View>
-        <TouchableOpacity style={styles.settingsIcon}>
-          <Ionicons name="settings-outline" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+      <Header />
       {/* Settings Items */}
       <View style={styles.content}>
         {/* Edit Profile Button - Direct navigation to profile page */}
