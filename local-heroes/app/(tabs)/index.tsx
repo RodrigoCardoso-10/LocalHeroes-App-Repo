@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
   const [recentJobs, setRecentJobs] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = async () => {
     try {
@@ -29,6 +30,18 @@ export default function HomeScreen() {
       router.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
+    }
+  };
+
+  // Handle search functionality
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push({
+        pathname: "/(tabs)/jobs",
+        params: { search: searchQuery.trim() }
+      });
+    } else {
+      router.push("/(tabs)/jobs");
     }
   };
 
@@ -108,29 +121,24 @@ export default function HomeScreen() {
       <Header />
       <ScrollView style={styles.scrollView}>
         {/* Search Bar */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push("/(tabs)/jobs")}
-        >
+        <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchBar}
             placeholder="Search for jobs..."
-            editable={false}
-            pointerEvents="none"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
           />
-        </TouchableOpacity>
-
-        {/* Job Categories */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categories}
-        >
-          <TouchableOpacity style={styles.category}>
-            <Text style={styles.categoryText}>Plumbing</Text>
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={handleSearch}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.searchButtonText}>🔍</Text>
           </TouchableOpacity>
-          {/* Add more categories as needed */}
-        </ScrollView>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -140,7 +148,7 @@ export default function HomeScreen() {
             <Text style={styles.recentJobsSubtitle}>
               {loading
                 ? "Loading..."
-                : `Showing ${recentJobs.length} recent jobs`}
+                : `Showing ${recentJobs.length > 0 ? recentJobs.length : jobData.length} recent jobs`}
             </Text>
           </View>
 
@@ -225,13 +233,33 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   searchBar: {
-    height: 40,
+    flex: 1,
+    height: 48,
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    backgroundColor: "#f9f9f9",
+  },
+  searchButton: {
+    marginLeft: 8,
+    backgroundColor: "#2BB6A3",
+    borderRadius: 8,
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchButtonText: {
+    fontSize: 18,
+    color: "#fff",
   },
   categories: {
     flexDirection: "row",
@@ -295,16 +323,20 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   recentJobsHeader: {
-    marginBottom: 12,
+    marginBottom: 20,
+    alignItems: "center",
   },
   recentJobsTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#222",
+    textAlign: "center",
+    marginBottom: 8,
   },
   recentJobsSubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#666",
+    textAlign: "center",
   },
   jobCardsContainer: {
     marginBottom: 24,
