@@ -1,7 +1,14 @@
-import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback } from 'react';
-import { authService, setupResponseInterceptor } from '../services/api';
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { authService } from "../services/api";
 // Using SecureStore instead of AsyncStorage for secure storage of sensitive data
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from "expo-secure-store";
 
 // Define user type
 type User = {
@@ -24,11 +31,17 @@ type User = {
 // Define context type
 type AuthContextType = {
   user: User | null;
+  token: string | null;
   isLoggedIn: boolean;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: { firstName: string; lastName: string; email: string; password: string }) => Promise<void>;
+  register: (userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => Promise<void>;
   clearError: () => void;
@@ -38,8 +51,11 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Provider component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const userData = await SecureStore.getItemAsync('user');
+        const userData = await SecureStore.getItemAsync("user");
         if (userData) {
           // Set the user from storage first for a faster initial load
           setUser(JSON.parse(userData));
@@ -58,15 +74,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           try {
             const freshUserData = await authService.checkAuth();
             setUser(freshUserData);
-            await SecureStore.setItemAsync('user', JSON.stringify(freshUserData));
+            await SecureStore.setItemAsync(
+              "user",
+              JSON.stringify(freshUserData)
+            );
           } catch (verifyErr) {
             // If server verification fails, log the user out
-            console.log('Session expired or invalid, logging out');
+            console.log("Session expired or invalid, logging out");
             await logout();
           }
         }
+
+        // In loadUser, also load token from SecureStore
+        const tokenData = await SecureStore.getItemAsync("accessToken");
+        if (tokenData) {
+          setToken(tokenData);
+        }
       } catch (err: unknown) {
-        console.error('Error loading user data:', err instanceof Error ? err.message : 'Unknown error');
+        console.error(
+          "Error loading user data:",
+          err instanceof Error ? err.message : "Unknown error"
+        );
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -82,18 +110,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await authService.logout();
     } catch (err) {
-      console.error('Logout error:', err);
+      console.error("Logout error:", err);
     } finally {
       setUser(null);
-      await SecureStore.deleteItemAsync('user');
-      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync("user");
+      await SecureStore.deleteItemAsync("accessToken");
       setIsLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    setupResponseInterceptor(logout);
-  }, [logout]);
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -104,17 +128,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Login to get tokens (stored in cookies)
       await authService.login(email, password);
 
+      // In login, after successful login, get token from SecureStore
+      const storedToken = await SecureStore.getItemAsync("accessToken");
+      if (storedToken) {
+        setToken(storedToken);
+      }
+
       // After successful login, fetch user data using the auth service
       try {
         const userData = await authService.checkAuth();
         setUser(userData);
-        await SecureStore.setItemAsync('user', JSON.stringify(userData));
+        await SecureStore.setItemAsync("user", JSON.stringify(userData));
       } catch (err) {
-        console.error('Error fetching user data:', err);
+        console.error("Error fetching user data:", err);
         throw err;
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Login failed. Please check your credentials."
+      );
       throw err;
     } finally {
       setIsLoading(false);
@@ -122,46 +156,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Register function
-  const register = async (userData: { firstName: string; lastName: string; email: string; password: string }) => {
+  const register = async (userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      console.log('Starting registration process for:', userData.email);
+      console.log("Starting registration process for:", userData.email);
 
       // Register the user
       await authService.register(userData);
-      console.log('Registration successful, proceeding to login');
+      console.log("Registration successful, proceeding to login");
 
       // Add a much longer delay before login attempt to ensure backend has processed the registration
-      console.log('Waiting for backend to process registration before login attempt...');
+      console.log(
+        "Waiting for backend to process registration before login attempt..."
+      );
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
       // After registration, try to log the user in with retry mechanism
       try {
-        console.log('Attempting login after registration');
+        console.log("Attempting login after registration");
         await login(userData.email, userData.password);
       } catch (loginError) {
-        console.log('First login attempt failed, waiting additional time before retry');
+        console.log(
+          "First login attempt failed, waiting additional time before retry"
+        );
         // If first login fails, wait a bit more and try again
         await new Promise((resolve) => setTimeout(resolve, 3000));
-        console.log('Retrying login after registration');
+        console.log("Retrying login after registration");
         await login(userData.email, userData.password);
       }
     } catch (err: any) {
-      console.error('Registration error in AuthContext:', err);
+      console.error("Registration error in AuthContext:", err);
 
       // Handle different types of error objects
-      if (err && typeof err === 'object') {
+      if (err && typeof err === "object") {
         if (err.message) {
           setError(err.message);
-        } else if (typeof err === 'string') {
+        } else if (typeof err === "string") {
           setError(err);
         } else {
-          setError('Registration failed. Please try again.');
+          setError("Registration failed. Please try again.");
         }
       } else {
-        setError('Registration failed. Please try again.');
+        setError("Registration failed. Please try again.");
       }
 
       throw err;
@@ -169,6 +212,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
   };
+
   // Update user function
   const updateUser = async (userData: Partial<User>) => {
     try {
@@ -188,15 +232,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
 
       // Filter out undefined values
-      const filteredData = Object.fromEntries(Object.entries(profileData).filter(([_, value]) => value !== undefined));
+      const filteredData = Object.fromEntries(
+        Object.entries(profileData).filter(([_, value]) => value !== undefined)
+      );
 
       const updatedUser = await authService.updateProfile(filteredData);
 
       // Update local state
       setUser(updatedUser);
-      await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
+      await SecureStore.setItemAsync("user", JSON.stringify(updatedUser));
     } catch (err: any) {
-      setError(err.message || 'Failed to update profile');
+      setError(err.message || "Failed to update profile");
       throw err;
     } finally {
       setIsLoading(false);
@@ -209,7 +255,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   return (
     <AuthContext.Provider
-      value={{ user, isLoggedIn, isLoading, error, login, register, logout, updateUser, clearError }}
+      value={{
+        user,
+        token,
+        isLoggedIn,
+        isLoading,
+        error,
+        login,
+        register,
+        logout,
+        updateUser,
+        clearError,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -218,6 +275,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
