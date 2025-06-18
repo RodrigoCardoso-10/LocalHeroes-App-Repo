@@ -1,20 +1,28 @@
-import { User } from './user';
-
 // Task-related types and interfaces
 export interface Task {
   _id: string;
   title: string;
   description: string;
   status: 'open' | 'in_progress' | 'completed' | 'cancelled';
-  postedBy: User;
-  acceptedBy?: User | null;
-  location?: {
-    address?: string;
-    point?: {
-      type: 'Point';
-      coordinates: [number, number];
-    };
+  postedBy: {
+    _id: string;
+    id: string;
+    username?: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    skills?: string[];
   };
+  acceptedBy?: {
+    _id: string;
+    id: string;
+    username?: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    skills?: string[];
+  } | null;
+  location?: string;
   price: number;
   dueDate?: string;
   category?: string;
@@ -22,15 +30,31 @@ export interface Task {
   experienceLevel?: string;
   createdAt: string;
   updatedAt: string;
-  applicants?: User[];
-  views?: number;
 }
 
-export type PopulatedTask = Task & {
-  postedBy: User;
-  acceptedBy?: User | null;
-  applicants: User[];
-};
+export interface User {
+  _id?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  skills?: string[];
+  bio?: string;
+  profilePicture?: string;
+  [key: string]: any;
+}
+
+export interface Review {
+  _id?: string;
+  reviewedUserId?: string;
+  reviewerUserId?: string;
+  reviewerName?: string;
+  comment?: string;
+  rating?: number;
+  createdAt?: string;
+  [key: string]: any;
+}
 
 export interface TaskFilters {
   search?: string;
@@ -44,7 +68,6 @@ export interface TaskFilters {
   experienceLevel?: string;
   page?: number;
   limit?: number;
-  sortBy?: string;
 }
 
 export interface TasksResponse {
@@ -58,10 +81,7 @@ export interface TasksResponse {
 export interface CreateTaskData {
   title: string;
   description: string;
-  location?: {
-    address?: string;
-    coordinates?: [number, number];
-  };
+  location?: string;
   price: number;
   dueDate?: string;
   category?: string;
@@ -72,10 +92,7 @@ export interface CreateTaskData {
 export interface UpdateTaskData {
   title?: string;
   description?: string;
-  location?: {
-    address?: string;
-    coordinates?: [number, number];
-  };
+  location?: string;
   price?: number;
   dueDate?: string;
   category?: string;

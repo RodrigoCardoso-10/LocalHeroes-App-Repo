@@ -296,10 +296,74 @@ export const authService = {
 
   applyForTask: async (id: string) => {
     try {
-      const response = await api.patch(`/tasks/${id}/apply`);
+      console.log('Attempting to apply for task:', {
+        taskId: id,
+        timestamp: new Date().toISOString(),
+        // Add more context
+        context: {
+          method: 'PATCH',
+          endpoint: `/tasks/${id}/apply`
+        }
+      });
+
+      // Add request timeout and more comprehensive config
+      const response = await api.patch(`/tasks/${id}/apply`, {}, {
+        timeout: 15000, // 15-second timeout
+        headers: {
+          'X-Application-Context': JSON.stringify({
+            source: 'mobile-app',
+            version: '1.0.0',
+            timestamp: new Date().toISOString()
+          }),
+          // Add more diagnostic headers
+          'X-Diagnostic-Request-ID': `apply-${id}-${Date.now()}`
+        },
+        // Add more robust error handling
+        validateStatus: (status) => status >= 200 && status < 300
+      });
+      
+      console.log('Task application successful:', {
+        taskId: id,
+        responseStatus: response.status,
+        responseData: response.data
+      });
+      
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to apply for task' };
+      console.error('Apply for task error:', {
+        taskId: id,
+        errorType: error?.constructor?.name,
+        errorMessage: error?.message,
+        errorResponse: error?.response?.data,
+        errorStatus: error?.response?.status,
+        requestConfig: error?.config,
+        responseData: error?.response?.data,
+        responseHeaders: error?.response?.headers,
+        responseStatus: error?.response?.status,
+        timestamp: new Date().toISOString()
+      });
+
+      // More granular error handling
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx
+        throw {
+          message: error.response.data?.message || 'Failed to apply for task',
+          status: error.response.status,
+          details: error.response.data
+        };
+      } else if (error.request) {
+        // The request was made but no response was received
+        throw {
+          message: 'No response received from server. Please check your connection.',
+          type: 'network_error'
+        };
+      } else {
+        // Something happened in setting up the request
+        throw {
+          message: `Request setup error: ${error.message}`,
+          type: 'request_setup_error'
+        };
+      }
     }
   },
 
@@ -364,6 +428,90 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to delete notification' };
+    }
+  },
+
+  // Get user profile by ID or email
+  getUserProfile: async (identifier: string) => {
+    try {
+      console.log('Fetching user profile:', { identifier });
+      
+      // Check if the identifier looks like an email
+      const isEmail = identifier.includes('@');
+      
+      // Array of possible endpoints to try
+      const endpoints = isEmail 
+        ? [
+            `/users/profile?email=${encodeURIComponent(identifier)}`,
+            `/users/profile/email/${encodeURIComponent(identifier)}`,
+            `/users/by-email/${encodeURIComponent(identifier)}`
+          ]
+        : [`/users/profile/${identifier}`];
+      
+      // Try each endpoint until one succeeds
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Attempting to fetch profile from endpoint: ${endpoint}`);
+          
+          const response = await api.get(endpoint, {
+            timeout: 10000, // 10-second timeout
+            headers: {
+              'X-Request-Context': JSON.stringify({
+                source: 'mobile-app',
+                requestType: isEmail ? 'user-profile-by-email' : 'user-profile-by-id',
+                timestamp: new Date().toISOString()
+              })
+            }
+          });
+          
+          console.log('User profile retrieved successfully:', {
+            identifier,
+            profileData: {
+              firstName: response.data.firstName,
+              lastName: response.data.lastName,
+              email: response.data.email,
+              profileFetchTimestamp: new Date().toISOString()
+            }
+          });
+          
+          return response.data;
+        } catch (endpointError: any) {
+          console.warn(`Failed to fetch profile from ${endpoint}:`, {
+            errorMessage: endpointError.message,
+            errorResponse: endpointError.response?.data
+          });
+          
+          // If it's the last endpoint, rethrow the error
+          if (endpoint === endpoints[endpoints.length - 1]) {
+            throw endpointError;
+          }
+        }
+      }
+      
+      // This should never be reached, but TypeScript requires a return
+      throw new Error('Unable to retrieve user profile');
+    } catch (error: any) {
+      console.error('Failed to retrieve user profile:', {
+        identifier,
+        errorMessage: error.message,
+        errorResponse: error.response?.data,
+        fullError: JSON.stringify(error, null, 2)
+      });
+      
+      // More detailed error handling
+      if (error.response) {
+        // Server responded with an error
+        throw new Error(
+          error.response.data?.message || 
+          `Failed to retrieve profile. Status: ${error.response.status}`
+        );
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error('No response from server. Please check your connection.');
+      } else {
+        // Something happened in setting up the request
+        throw new Error(`Profile retrieval error: ${error.message}`);
+      }
     }
   },
 };
