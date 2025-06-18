@@ -74,18 +74,6 @@ const MyPostedJobsScreen = () => {
     fetchPostedJobs();
   }, [fetchPostedJobs]); // Dependency for useEffect: re-run when fetchPostedJobs itself changes (due to its dependencies)
 
-  /**
-   * handleJobPress
-   * Navigates to the details page for a specific posted job.
-   * This might show applicants, job status, etc.
-   */
-  const handleJobPress = (jobId: string) => {
-    // Example: router.push(`/jobs/posted/${jobId}`);
-    console.log(`Navigating to posted job details for: ${jobId}`);
-    Alert.alert('Posted Job Details', `Navigating to details for posted job ID: ${jobId}`);
-    // You would navigate to a detailed view for a job the user has posted
-  };
-
   // Render loading state
   if (loading) {
     return (
@@ -135,7 +123,7 @@ const MyPostedJobsScreen = () => {
         ListHeaderComponent={<Text style={styles.title}>My Posted Jobs</Text>}
         contentContainerStyle={styles.listContentContainer}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.jobItem} onPress={() => handleJobPress(item._id)}>
+          <View style={styles.jobItem}>
             <View style={styles.iconContentContainer}>
               <Ionicons name="document-text-outline" size={24} color="#2A9D8F" />
             </View>
@@ -145,8 +133,10 @@ const MyPostedJobsScreen = () => {
                 {item.description}
               </Text>
             </View>
-            <Ionicons name="chevron-forward-outline" size={24} color="#999" />
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.manageButton} onPress={() => router.push(`/jobs/manage/${item._id}`)}>
+              <Text style={styles.manageButtonText}>Manage</Text>
+            </TouchableOpacity>
+          </View>
         )}
       />
     </SafeAreaView>
@@ -241,6 +231,16 @@ const styles = StyleSheet.create({
   jobDescription: {
     fontSize: 14,
     color: '#666',
+  },
+  manageButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+  },
+  manageButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 

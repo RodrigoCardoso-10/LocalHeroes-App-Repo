@@ -1,27 +1,13 @@
+import { User } from './user';
+
 // Task-related types and interfaces
 export interface Task {
   _id: string;
   title: string;
   description: string;
   status: 'open' | 'in_progress' | 'completed' | 'cancelled';
-  postedBy: {
-    _id: string;
-    id: string;
-    username?: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    skills?: string[];
-  };
-  acceptedBy?: {
-    _id: string;
-    id: string;
-    username?: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    skills?: string[];
-  } | null;
+  postedBy: User;
+  acceptedBy?: User | null;
   location?: {
     address?: string;
     point?: {
@@ -36,9 +22,15 @@ export interface Task {
   experienceLevel?: string;
   createdAt: string;
   updatedAt: string;
-  applicants?: any[];
+  applicants?: User[];
   views?: number;
 }
+
+export type PopulatedTask = Task & {
+  postedBy: User;
+  acceptedBy?: User | null;
+  applicants: User[];
+};
 
 export interface TaskFilters {
   search?: string;
