@@ -1,189 +1,244 @@
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface JobCardProps {
   job: {
-    id: number;
+    _id: string;
     title: string;
-    company: string;
-    location: string;
-    type: string;
-    salary: string;
-    logo: any; // You'll need to add actual logo images
-    color: string;
+    description: string;
+    location?: string;
+    price: number;
+    category?: string;
+    tags?: string[];
+    status: string;
+    postedBy: {
+      firstName?: string;
+      lastName?: string;
+    };
   };
   onPress: () => void;
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
+  // Helper for status badge style
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "OPEN":
+        return { backgroundColor: "#E8F5E8" };
+      case "IN_PROGRESS":
+        return { backgroundColor: "#FFF3CD" };
+      case "COMPLETED":
+        return { backgroundColor: "#D1ECF1" };
+      case "CANCELLED":
+        return { backgroundColor: "#F8D7DA" };
+      default:
+        return { backgroundColor: "#E9ECEF" };
+    }
+  };
+  const getStatusTextStyle = (status: string) => {
+    switch (status) {
+      case "OPEN":
+        return { color: "#155724" };
+      case "IN_PROGRESS":
+        return { color: "#856404" };
+      case "COMPLETED":
+        return { color: "#0C5460" };
+      case "CANCELLED":
+        return { color: "#721C24" };
+      default:
+        return { color: "#495057" };
+    }
+  };
+  const poster = job.postedBy || {};
+  const firstName =
+    typeof poster.firstName === "string" ? poster.firstName : "Unknown";
+  const lastName = typeof poster.lastName === "string" ? poster.lastName : "";
+  const avatarLetter = firstName.charAt(0) || "U";
   return (
-    <TouchableOpacity
-      key={job.id}
-      style={[styles.jobCard, { backgroundColor: job.color }]} 
-      onPress={onPress}
-    >
-      <View style={styles.jobCardHeader}>
-        <View style={styles.companyLogoContainer}>
-          <View style={styles.logoPlaceholder}>
-            {/* Replace with actual Image component when you have logos */}
-            <Image source={job.logo} style={styles.companyLogo} />
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>{job.title}</Text>
+        <Text style={styles.price}>€{job.price}</Text>
+      </View>
+      <Text style={styles.description} numberOfLines={2}>
+        {job.description}
+      </Text>
+      <View style={styles.metaRow}>
+        {job.location && (
+          <View style={styles.metaItem}>
+            <Ionicons name="location-outline" size={14} color="#666" />
+            <Text style={styles.metaText}>{job.location}</Text>
           </View>
-        </View>
-        <View style={styles.jobTypeContainer}>
-          <Text style={styles.jobType}>{job.type}</Text>
-        </View>
-      </View>
-
-      <View style={styles.jobCardContent}>
-        <Text style={styles.jobTitle}>{job.title}</Text>
-        <Text style={styles.companyName}>{job.company}</Text>
-        
-        <View style={styles.jobDetailsRow}>
-          <View style={styles.locationContainer}>
-            <Text style={styles.locationIcon}>📍</Text>
-            <Text style={styles.locationText}>{job.location}</Text>
+        )}
+        {job.category && (
+          <View style={styles.metaItem}>
+            <Ionicons name="pricetag-outline" size={14} color="#666" />
+            <Text style={styles.metaText}>{job.category}</Text>
           </View>
-          <Text style={styles.salaryText}>{job.salary}</Text>
+        )}
+      </View>
+      <View style={styles.footerRow}>
+        <View style={styles.posterRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{avatarLetter}</Text>
+          </View>
+          <Text style={styles.posterName}>
+            {firstName} {lastName}
+          </Text>
+        </View>
+        <View style={[styles.statusBadge, getStatusBadgeStyle(job.status)]}>
+          <Text style={[styles.statusText, getStatusTextStyle(job.status)]}>
+            {typeof job.status === "string"
+              ? job.status.replace("_", " ")
+              : "Unknown"}
+          </Text>
         </View>
       </View>
-
-      <View style={styles.jobCardFooter}>
-        <TouchableOpacity style={styles.applyButton}>
-          <Text style={styles.applyButtonText}>Apply Now</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+      {job.tags && job.tags.length > 0 && (
+        <View style={styles.tagsRow}>
+          {job.tags.slice(0, 3).map((tag, idx) => (
+            <View key={idx} style={styles.tag}>
+              <Text style={styles.tagText}>{tag}</Text>
+            </View>
+          ))}
+          {job.tags.length > 3 && (
+            <Text style={styles.moreTagsText}>+{job.tags.length - 3}</Text>
+          )}
+        </View>
+      )}
+      <TouchableOpacity style={styles.detailsButton} onPress={onPress}>
+        <Text style={styles.detailsButtonText}>Job details</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  jobCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  jobCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  companyLogoContainer: {
-    width: 50,
-    height: 50,
-  },
-  logoPlaceholder: {
-    width: 50,
-    height: 50,
+  card: {
+    backgroundColor: "white",
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
-  companyLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-  },
-  logoText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4A5568',
-  },
-  jobTypeContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  jobType: {
-    fontSize: 12,
-    color: '#4A5568',
-    fontWeight: '500',
-  },
-  jobCardContent: {
-    marginBottom: 20,
-  },
-  jobTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2D3748',
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 8,
-    lineHeight: 24,
   },
-  companyName: {
+  title: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    flex: 1,
+    marginRight: 8,
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2A9D8F",
+  },
+  description: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
+    lineHeight: 20,
     marginBottom: 12,
   },
-  jobDetailsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
   },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
   },
-  locationIcon: {
+  metaText: {
+    fontSize: 12,
+    color: "#666",
+    marginLeft: 4,
+  },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  posterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#2A9D8F",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  avatarText: {
+    color: "white",
     fontSize: 14,
+    fontWeight: "600",
+  },
+  posterName: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  tag: {
+    backgroundColor: "#F1F7F6",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
     marginRight: 6,
+    marginBottom: 4,
   },
-  locationText: {
+  tagText: {
+    fontSize: 11,
+    color: "#2A9D8F",
+    fontWeight: "500",
+  },
+  moreTagsText: {
+    fontSize: 11,
+    color: "#666",
+    fontStyle: "italic",
+  },
+  detailsButton: {
+    backgroundColor: "#2A9D8F",
+    paddingVertical: 10,
+    borderRadius: 4,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  detailsButtonText: {
+    color: "white",
     fontSize: 14,
-    color: '#666',
-  },
-  salaryText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2D3748',
-  },
-  jobCardFooter: {
-    alignItems: 'flex-end',
-  },
-  applyButton: {
-    backgroundColor: '#38A169',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
-    shadowColor: '#38A169',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  applyButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: "600",
   },
 });
 
-export default JobCard; 
+export default JobCard;

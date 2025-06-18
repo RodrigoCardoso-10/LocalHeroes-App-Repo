@@ -1,21 +1,7 @@
-import { Redirect } from 'expo-router';
-import React from 'react';
-import { StyleSheet } from 'react-native';
+import React from "react";
+import PostJobScreen from "../post-job";
 
 export default function PostScreen() {
-  // Redirect to the post-job page
-  return <Redirect href="/post-job" />;
+  // Render the post-job page content directly so the tab bar is visible
+  return <PostJobScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  text: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-}); 

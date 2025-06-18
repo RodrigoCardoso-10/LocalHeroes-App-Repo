@@ -1,76 +1,106 @@
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Header from '../components/Header';
-import JobCard from '../components/JobCard';
-import { Images } from '../constants/Images';
-import { useAuth } from '../context/AuthContext';
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Header from "../components/Header";
+import JobCard from "../components/JobCard";
+import { Images } from "../constants/Images";
+import { useAuth } from "../context/AuthContext";
+import { authService } from "../services/api";
+import { Task } from "../types/task";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [recentJobs, setRecentJobs] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
     try {
       await logout();
-      router.replace('/login');
+      router.replace("/login");
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
   };
 
-  // Sample job data based on the Figma design
+  // Fetch recent jobs
+  const loadRecentJobs = async () => {
+    try {
+      setLoading(true);
+      const response = await authService.getTasks({ page: 1, limit: 5 });
+      setRecentJobs(response.tasks);
+    } catch (error) {
+      console.error("Failed to load recent jobs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecentJobs();
+  }, []);
+
+  // Sample job data based on the Figma design (fallback)
   const jobData = [
     {
       id: 1,
-      title: 'Financial Security Analyst',
-      company: 'Tech Solutions Inc.',
-      location: 'New York',
-      type: 'Full-time',
-      salary: '$70k - $90k',
-      logo: require('../../assets/images/dummy.jpg'),
-      color: '#F0F8F7',
+      title: "Financial Security Analyst",
+      company: "Tech Solutions Inc.",
+      location: "New York",
+      type: "Full-time",
+      salary: "$70k - $90k",
+      logo: require("../../assets/images/dummy.jpg"),
+      color: "#F0F8F7",
     },
     {
       id: 2,
-      title: 'Software Quality Facilitator',
-      company: 'Innovate Corp.',
-      location: 'Remote',
-      type: 'Part-time',
-      salary: '$60k - $80k',
-      logo: require('../../assets/images/dummy.jpg'),
-      color: '#F7F0F8',
+      title: "Software Quality Facilitator",
+      company: "Innovate Corp.",
+      location: "Remote",
+      type: "Part-time",
+      salary: "$60k - $80k",
+      logo: require("../../assets/images/dummy.jpg"),
+      color: "#F7F0F8",
     },
     {
       id: 3,
-      title: 'Internal Integration Planner',
-      company: 'Global Ventures',
-      location: 'San Francisco',
-      type: 'Full-time',
-      salary: '$80k - $100k',
-      logo: require('../../assets/images/dummy.jpg'),
-      color: '#F8F7F0',
+      title: "Internal Integration Planner",
+      company: "Global Ventures",
+      location: "San Francisco",
+      type: "Full-time",
+      salary: "$80k - $100k",
+      logo: require("../../assets/images/dummy.jpg"),
+      color: "#F8F7F0",
     },
     {
       id: 4,
-      title: 'District Intranet Coordinator',
-      company: 'City Connect',
-      location: 'Chicago',
-      type: 'Contract',
-      salary: '$40k - $60k',
-      logo: require('../../assets/images/dummy.jpg'),
-      color: '#F0F8F7',
+      title: "District Intranet Coordinator",
+      company: "City Connect",
+      location: "Chicago",
+      type: "Contract",
+      salary: "$40k - $60k",
+      logo: require("../../assets/images/dummy.jpg"),
+      color: "#F0F8F7",
     },
     {
       id: 5,
-      title: 'Customer Service Facilitator',
-      company: 'Service First',
-      location: 'Austin',
-      type: 'Full-time',
-      salary: '$50k - $70k',
-      logo: require('../../assets/images/dummy.jpg'),
-      color: '#F7F0F8',
-    }
+      title: "Customer Service Facilitator",
+      company: "Service First",
+      location: "Austin",
+      type: "Full-time",
+      salary: "$50k - $70k",
+      logo: require("../../assets/images/dummy.jpg"),
+      color: "#F7F0F8",
+    },
   ];
 
   return (
@@ -78,42 +108,105 @@ export default function HomeScreen() {
       <Header />
       <ScrollView style={styles.scrollView}>
         {/* Search Bar */}
-        <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(tabs)/jobs')}>
-          <TextInput style={styles.searchBar} placeholder="Search for jobs..." editable={false} pointerEvents="none" />
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => router.push("/(tabs)/jobs")}
+        >
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search for jobs..."
+            editable={false}
+            pointerEvents="none"
+          />
         </TouchableOpacity>
 
         {/* Job Categories */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categories}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categories}
+        >
           <TouchableOpacity style={styles.category}>
             <Text style={styles.categoryText}>Plumbing</Text>
           </TouchableOpacity>
           {/* Add more categories as needed */}
         </ScrollView>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.recentJobsHeader}>
             <Text style={styles.recentJobsTitle}>Recent Jobs Available</Text>
-            <Text style={styles.recentJobsSubtitle}>Showing 500+ available jobs</Text>
+            <Text style={styles.recentJobsSubtitle}>
+              {loading
+                ? "Loading..."
+                : `Showing ${recentJobs.length} recent jobs`}
+            </Text>
           </View>
 
           <View style={styles.jobCardsContainer}>
-            {jobData.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                onPress={() => router.push({ pathname: "/jobs/[id]", params: { id: job.id } })}
-              />
-            ))}
+            {loading ? (
+              <Text style={styles.loadingText}>Loading recent jobs...</Text>
+            ) : recentJobs.length > 0 ? (
+              recentJobs.map((job) => (
+                <JobCard
+                  key={job._id}
+                  job={job}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/jobs/[id]",
+                      params: { id: job._id },
+                    })
+                  }
+                />
+              ))
+            ) : (
+              jobData.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={{
+                    _id: job.id.toString(),
+                    title: job.title,
+                    description: job.company || "No description",
+                    location: job.location,
+                    price:
+                      typeof job.salary === "string"
+                        ? parseInt(job.salary.replace(/[^0-9]/g, "")) || 0
+                        : 0,
+                    category: job.type,
+                    tags: [],
+                    status: "OPEN",
+                    postedBy: { firstName: "Company", lastName: "" },
+                  }}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/jobs/[id]",
+                      params: { id: job.id },
+                    })
+                  }
+                />
+              ))
+            )}
           </View>
 
           {/* Promotional Section */}
           <View style={styles.promoContainer}>
-            <Image source={Images.dummy} style={styles.promoImage} resizeMode="cover" />
-            <Text style={styles.promoTitle}>Good Life Begins With A Good Company</Text>
-            <Text style={styles.promoDescription}>
-              Unlock opportunities with our handpicked list of companies. Explore the offers, compare, and find the best
-              fit for you with confidence.
+            <Image
+              source={Images.dummy}
+              style={styles.promoImage}
+              resizeMode="cover"
+            />
+            <Text style={styles.promoTitle}>
+              Your chance to help someone
             </Text>
-            <TouchableOpacity style={styles.promoButton} onPress={() => router.push('/(tabs)/jobs')}>
+            <Text style={styles.promoDescription}>
+              Be the on that makes someone else's day by signing up 
+              for a job.
+            </Text>
+            <TouchableOpacity
+              style={styles.promoButton}
+              onPress={() => router.push("/(tabs)/jobs")}
+            >
               <Text style={styles.promoButtonText}>Search Job</Text>
             </TouchableOpacity>
           </View>
@@ -126,7 +219,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   scrollView: {
     flex: 1,
@@ -134,18 +227,18 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     height: 40,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 8,
     marginBottom: 16,
   },
   categories: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 16,
   },
   category: {
-    backgroundColor: '#eee',
+    backgroundColor: "#eee",
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -155,48 +248,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   promoContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
   },
   promoImage: {
-    width: '100%',
+    width: "100%",
     height: 120,
     borderRadius: 12,
     marginBottom: 16,
   },
   promoTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#222',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#222",
+    textAlign: "center",
     marginBottom: 8,
   },
   promoDescription: {
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginBottom: 16,
   },
   promoButton: {
-    backgroundColor: '#2BB6A3',
+    backgroundColor: "#2BB6A3",
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 32,
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
   },
   promoButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   content: {
     paddingBottom: 24,
@@ -206,14 +299,35 @@ const styles = StyleSheet.create({
   },
   recentJobsTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#222',
+    fontWeight: "bold",
+    color: "#222",
   },
   recentJobsSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   jobCardsContainer: {
     marginBottom: 24,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  jobNameContainer: {
+    marginBottom: 8,
+  },
+  jobName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  jobLocation: {
+    fontSize: 14,
+    color: "#666",
+  },
+  jobPrice: {
+    fontSize: 14,
+    color: "#2BB6A3",
   },
 });
