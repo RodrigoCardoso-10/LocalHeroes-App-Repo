@@ -32,6 +32,30 @@ export interface Task {
   updatedAt: string;
 }
 
+export interface User {
+  _id?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  skills?: string[];
+  bio?: string;
+  profilePicture?: string;
+  [key: string]: any;
+}
+
+export interface Review {
+  _id?: string;
+  reviewedUserId?: string;
+  reviewerUserId?: string;
+  reviewerName?: string;
+  comment?: string;
+  rating?: number;
+  createdAt?: string;
+  [key: string]: any;
+}
+
 export interface TaskFilters {
   search?: string;
   location?: string;

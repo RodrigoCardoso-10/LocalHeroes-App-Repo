@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +16,9 @@ import { authService } from './services/api';
 
 export default function PostJobScreen() {
   const { user } = useAuth();
+  const { jobId } = useLocalSearchParams(); // Get the job ID if editing
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [jobTitle, setJobTitle] = useState('');
   const [category, setCategory] = useState('');
   const [contact, setContact] = useState('');
@@ -26,7 +28,48 @@ export default function PostJobScreen() {
   const [mainTasks, setMainTasks] = useState('');
   const [minimumRequirements, setMinimumRequirements] = useState('');
   const [tags, setTags] = useState('');
-  const [experienceLevel, setExperienceLevel] = useState('');
+
+  // Load existing job details if editing
+  useEffect(() => {
+    const loadJobDetails = async () => {
+      if (jobId) {
+        try {
+          setIsEditing(true);
+          const jobDetails = await authService.getTask(jobId as string);
+          
+          // Populate form with existing job details
+          setJobTitle(jobDetails.title);
+          setCategory(jobDetails.category || '');
+          setContact(jobDetails.contact || '');
+          setLocation(jobDetails.location || '');
+          setPayment(jobDetails.price.toString());
+          setDescription(jobDetails.description);
+          
+          // Parse description to extract main tasks and requirements
+          const descriptionParts: string[] = jobDetails.description.split('\n\n');
+          if (descriptionParts.length > 1) {
+            const mainTasksIndex = descriptionParts.findIndex((part: string) => part.includes('Main Tasks:'));
+            const requirementsIndex = descriptionParts.findIndex((part: string) => part.includes('Minimum Requirements:'));
+            
+            if (mainTasksIndex !== -1) {
+              setMainTasks(descriptionParts[mainTasksIndex].replace('Main Tasks:', '').trim());
+            }
+            
+            if (requirementsIndex !== -1) {
+              setMinimumRequirements(descriptionParts[requirementsIndex].replace('Minimum Requirements:', '').trim());
+            }
+          }
+          
+          setTags(jobDetails.tags?.join(', ') || '');
+        } catch (error) {
+          console.error('Failed to load job details:', error);
+          Alert.alert('Error', 'Failed to load job details');
+        }
+      }
+    };
+
+    loadJobDetails();
+  }, [jobId]);
 
   const handlePostJob = async () => {
     // Validate required fields
@@ -65,25 +108,55 @@ export default function PostJobScreen() {
               .map((tag) => tag.trim())
               .filter((tag) => tag.length > 0)
           : undefined,
-        experienceLevel: experienceLevel.trim() || undefined,
       };
 
-      // Create the task via API
-      await authService.createTask(taskData);
-
-      Alert.alert('Success!', 'Your job has been posted successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.push('/(tabs)/jobs'),
-        },
-      ]);
+      // Create or update the task via API
+      let response;
+      if (isEditing && jobId) {
+        try {
+          response = await authService.updateTask(jobId as string, taskData);
+          Alert.alert('Success!', 'Your job has been updated successfully!', [
+            {
+              text: 'OK',
+              onPress: () => router.push('/(tabs)/jobs'),
+            },
+          ]);
+        } catch (updateError: any) {
+          console.error('Error updating job:', updateError);
+          Alert.alert(
+            'Update Error', 
+            updateError.message || 'Failed to update job. Please try again.', 
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      } else {
+        try {
+          response = await authService.createTask(taskData);
+          Alert.alert('Success!', 'Your job has been posted successfully!', [
+            {
+              text: 'OK',
+              onPress: () => router.push('/(tabs)/jobs'),
+            },
+          ]);
+        } catch (createError: any) {
+          console.error('Error creating job:', createError);
+          Alert.alert(
+            'Post Error', 
+            createError.message || 'Failed to post job. Please try again.', 
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      }
     } catch (error: any) {
-      console.error('Error posting job:', error);
-      Alert.alert('Error', error.message || 'Failed to post job. Please try again.', [{ text: 'OK' }]);
+      console.error('Unexpected error:', error);
+      Alert.alert('Unexpected Error', 'An unexpected error occurred. Please try again.', [{ text: 'OK' }]);
     } finally {
       setIsLoading(false);
     }
   };
+
   interface PlaceholderInputProps {
     label: string;
     value: string;
@@ -119,86 +192,92 @@ export default function PostJobScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Post a Job</Text>
-        <Text style={styles.subtitle}>Nish dis faucibus pison lacus tristique</Text>
-        <PlaceholderInput
-          label="Job Title *"
-          value={jobTitle}
-          onChangeText={setJobTitle}
-          placeholder="e.g. Garden maintenance, House cleaning..."
-        />
-        <PlaceholderInput
-          label="Category"
-          value={category}
-          onChangeText={setCategory}
-          placeholder="e.g. Gardening, Cleaning, Moving..."
-        />
-        <PlaceholderInput
-          label="Experience Level"
-          value={experienceLevel}
-          onChangeText={setExperienceLevel}
-          placeholder="e.g. No experience, Beginner, Expert..."
-        />
-        <PlaceholderInput
-          label="Contact"
-          value={contact}
-          onChangeText={setContact}
-          placeholder="Your contact information..."
-        />
-        <PlaceholderInput
-          label="Location"
-          value={location}
-          onChangeText={setLocation}
-          placeholder="e.g. Amsterdam, Utrecht..."
-        />
-        <PlaceholderInput
-          label="Payment (€) *"
-          value={payment}
-          onChangeText={setPayment}
-          keyboardType="numeric"
-          placeholder="e.g. 25, 50, 100..."
-        />
-        <PlaceholderInput
-          label="Description *"
-          value={description}
-          onChangeText={setDescription}
-          multiline={true}
-          placeholder="Describe the job in detail..."
-        />
-        <PlaceholderInput
-          label="Main Tasks"
-          value={mainTasks}
-          onChangeText={setMainTasks}
-          multiline={true}
-          placeholder="List the main tasks to be completed..."
-        />
-        <PlaceholderInput
-          label="Minimum Requirements"
-          value={minimumRequirements}
-          onChangeText={setMinimumRequirements}
-          multiline={true}
-          placeholder="Specify any requirements or qualifications..."
-        />
-        <PlaceholderInput
-          label="Tags (comma separated)"
-          value={tags}
-          onChangeText={setTags}
-          placeholder="e.g. urgent, weekend, outdoor..."
-        />
-        <TouchableOpacity
-          style={[styles.postButton, isLoading && styles.postButtonDisabled]}
-          onPress={handlePostJob}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.postButtonText}>Post Job</Text>
-          )}
-        </TouchableOpacity>
-        <Text style={styles.noteText}>* Required fields. Your job will be visible to all users once posted.</Text>
-      </View>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.formContainer}>
+          <Text style={styles.title}>{isEditing ? 'Edit Job' : 'Post a Job'}</Text>
+          <Text style={styles.subtitle}>
+            {isEditing 
+              ? 'Update the details of your existing job post' 
+              : 'Nish dis faucibus pison lacus tristique'}
+          </Text>
+          <PlaceholderInput
+            label="Job Title *"
+            value={jobTitle}
+            onChangeText={setJobTitle}
+            placeholder="e.g. Garden maintenance, House cleaning..."
+          />
+          <PlaceholderInput
+            label="Category"
+            value={category}
+            onChangeText={setCategory}
+            placeholder="e.g. Gardening, Cleaning, Moving..."
+          />
+          <PlaceholderInput
+            label="Contact"
+            value={contact}
+            onChangeText={setContact}
+            placeholder="Your contact information..."
+          />
+          <PlaceholderInput
+            label="Location"
+            value={location}
+            onChangeText={setLocation}
+            placeholder="e.g. Amsterdam, Utrecht..."
+          />
+          <PlaceholderInput
+            label="Payment (€) *"
+            value={payment}
+            onChangeText={setPayment}
+            keyboardType="numeric"
+            placeholder="e.g. 25, 50, 100..."
+          />
+          <PlaceholderInput
+            label="Description *"
+            value={description}
+            onChangeText={setDescription}
+            multiline={true}
+            placeholder="Describe the job in detail..."
+          />
+          <PlaceholderInput
+            label="Main Tasks"
+            value={mainTasks}
+            onChangeText={setMainTasks}
+            multiline={true}
+            placeholder="List the main tasks to be completed..."
+          />
+          <PlaceholderInput
+            label="Minimum Requirements"
+            value={minimumRequirements}
+            onChangeText={setMinimumRequirements}
+            multiline={true}
+            placeholder="Specify any requirements or qualifications..."
+          />
+          <PlaceholderInput
+            label="Tags (comma separated)"
+            value={tags}
+            onChangeText={setTags}
+            placeholder="e.g. urgent, weekend, outdoor..."
+          />
+          <TouchableOpacity
+            style={[styles.postButton, isLoading && styles.postButtonDisabled]}
+            onPress={handlePostJob}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.postButtonText}>
+                {isEditing ? 'Update Job' : 'Post Job'}
+              </Text>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.noteText}>* Required fields. Your job will be visible to all users.</Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -210,6 +289,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
   },
   formContainer: {
     padding: 16,

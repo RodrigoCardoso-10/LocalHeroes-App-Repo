@@ -9,38 +9,136 @@ import {
   ScrollView,
   Image,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from './context/AuthContext';
+import { useReviews } from './context/ReviewsContext';
+import { authService } from './services/api';
+import { User, Review } from './types/task';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
-  const [profileData, setProfileData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    skills: [] as string[],
-    bio: '',
-    profilePicture: '',
-  });
+  const { id, email } = useLocalSearchParams();
+  const { reviews } = useReviews();
+  const [profileData, setProfileData] = useState<User>({});
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      setProfileData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        skills: user.skills || [],
-        bio: user.bio || '',
-        profilePicture: user.profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
-      });
-    }
-  }, [user]);
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Log incoming parameters for debugging
+        console.log('Profile Screen - Fetch Parameters:', {
+          id: id,
+          email: email,
+          currentUser: {
+            id: (user as any)?._id,
+            email: (user as any)?.email
+          }
+        });
+
+        // Determine the identifier to use
+        const identifier = (id || email) as string;
+
+        if (identifier) {
+          console.log('Attempting to fetch profile with identifier:', identifier);
+
+          try {
+            const fetchedProfile = await authService.getUserProfile(identifier);
+
+            console.log('Fetched Profile Details:', {
+              fetchedProfileId: fetchedProfile._id,
+              fetchedProfileEmail: fetchedProfile.email,
+              currentUserId: (user as any)?._id,
+              currentUserEmail: (user as any)?.email
+            });
+
+            // Set the profile data
+            setProfileData(fetchedProfile);
+
+            // Determine if this is the current user's profile
+            const isCurrentUserProfile = 
+              (fetchedProfile._id === (user as any)?._id) || 
+              (fetchedProfile.email === (user as any)?.email);
+
+            console.log('Is Own Profile Check:', {
+              idMatch: fetchedProfile._id === (user as any)?._id,
+              emailMatch: fetchedProfile.email === (user as any)?.email,
+              isCurrentUserProfile: isCurrentUserProfile
+            });
+
+            setIsOwnProfile(isCurrentUserProfile);
+          } catch (profileError) {
+            console.error('Profile Fetch Error:', profileError);
+            
+            // More informative error handling
+            Alert.alert(
+              'Profile Error', 
+              'Unable to retrieve the requested profile. Please try again.', 
+              [{ 
+                text: 'OK', 
+                onPress: () => router.back() 
+              }]
+            );
+          }
+        } else {
+          // If no identifier, show current user's profile
+          if (user) {
+            setProfileData({
+              _id: (user as any)._id || '',
+              firstName: (user as any).firstName || '',
+              lastName: (user as any).lastName || '',
+              email: (user as any).email || '',
+              phone: (user as any).phone || '',
+              address: (user as any).address || '',
+              skills: (user as any).skills || [],
+              bio: (user as any).bio || '',
+              profilePicture: (user as any).profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
+            });
+            setIsOwnProfile(true);
+          }
+        }
+      } catch (error) {
+        console.error('Unexpected error in profile retrieval:', error);
+        
+        Alert.alert(
+          'Unexpected Error', 
+          'An unexpected error occurred while retrieving the profile.', 
+          [{ 
+            text: 'OK', 
+            onPress: () => router.back() 
+          }]
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [id, email, user]);
+
+  // Filter reviews for this specific profile
+  const userReviews = reviews.filter(review => 
+    (review as any).reviewedUserId && 
+    (profileData as any)._id && 
+    (review as any).reviewedUserId === (profileData as any)._id
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0ca678" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -52,9 +150,11 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={() => router.push('/edit-profile' as any)} style={styles.editButton}>
-          <Ionicons name="create-outline" size={24} color="#0ca678" />
-        </TouchableOpacity>
+        {isOwnProfile && (
+          <TouchableOpacity onPress={() => router.push('/edit-profile' as any)} style={styles.editButton}>
+            <Ionicons name="create-outline" size={24} color="#0ca678" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content}>
@@ -62,13 +162,13 @@ export default function ProfileScreen() {
         <View style={styles.profilePictureContainer}>
           <Image
             source={{
-              uri: profileData.profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
+              uri: (profileData as any).profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
             }}
             style={styles.profilePicture}
           />
           <View style={styles.nameContainer}>
-            <Text style={styles.fullName}>{`${profileData.firstName} ${profileData.lastName}`}</Text>
-            <Text style={styles.emailText}>{profileData.email}</Text>
+            <Text style={styles.fullName}>{`${(profileData as any).firstName || ''} ${(profileData as any).lastName || ''}`}</Text>
+            <Text style={styles.emailText}>{(profileData as any).email || ''}</Text>
           </View>
         </View>
 
@@ -78,12 +178,12 @@ export default function ProfileScreen() {
           
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Phone</Text>
-            <Text style={styles.infoValue}>{profileData.phone || 'Not provided'}</Text>
+            <Text style={styles.infoValue}>{(profileData as any).phone || 'Not provided'}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Address</Text>
-            <Text style={styles.infoValue}>{profileData.address || 'Not provided'}</Text>
+            <Text style={styles.infoValue}>{(profileData as any).address || 'Not provided'}</Text>
           </View>
         </View>
 
@@ -91,8 +191,8 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skills</Text>
           <View style={styles.skillsContainer}>
-            {profileData.skills.length > 0 ? (
-              profileData.skills.map((skill, index) => (
+            {(profileData as any).skills && (profileData as any).skills.length > 0 ? (
+              (profileData as any).skills.map((skill: string, index: number) => (
                 <View key={index} style={styles.skillTag}>
                   <Text style={styles.skillText}>{skill}</Text>
                 </View>
@@ -107,8 +207,35 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Bio</Text>
           <Text style={styles.bioText}>
-            {profileData.bio || 'No bio provided yet'}
+            {(profileData as any).bio || 'No bio provided yet'}
           </Text>
+        </View>
+
+        {/* Reviews Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          {userReviews.length > 0 ? (
+            userReviews.map((review: Review, index: number) => (
+              <View key={index} style={styles.reviewContainer}>
+                <Text style={styles.reviewerName}>
+                  {(review as any).reviewerName || 'Anonymous'}
+                </Text>
+                <Text style={styles.reviewText}>{(review as any).comment}</Text>
+                <View style={styles.ratingContainer}>
+                  {[...Array(5)].map((_, i) => (
+                    <Ionicons 
+                      key={i} 
+                      name={i < ((review as any).rating || 0) ? "star" : "star-outline"} 
+                      size={16} 
+                      color="#FFD700" 
+                    />
+                  ))}
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noContentText}>No reviews yet</Text>
+          )}
         </View>
 
         <View style={styles.bottomSpace} />
@@ -121,6 +248,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     backgroundColor: '#000',
@@ -231,5 +368,26 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 40,
+  },
+  reviewContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  reviewerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  reviewText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
