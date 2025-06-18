@@ -556,7 +556,11 @@ export default function JobsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header />
-      <ScrollView>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* View Toggle */}
         <View style={styles.viewToggleContainer}>
           <TouchableOpacity
@@ -921,6 +925,7 @@ export default function JobsScreen() {
             </View>
           </View>
         )}
+        <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -930,6 +935,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  bottomSpace: {
+    height: 80,
   },
   scrollView: {
     flex: 1,

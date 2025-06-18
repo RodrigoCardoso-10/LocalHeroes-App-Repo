@@ -152,7 +152,9 @@ export default function InboxScreen() {
 
       {notifications.length > 0 ? (
         <ScrollView
-          style={styles.notificationsContainer}
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2A9D8F']} tintColor="#2A9D8F" />
           }
@@ -180,6 +182,7 @@ export default function InboxScreen() {
               </TouchableOpacity>
             </TouchableOpacity>
           ))}
+          <View style={styles.bottomSpace} />
         </ScrollView>
       ) : (
         <View style={styles.emptyContainer}>
@@ -240,6 +243,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  bottomSpace: {
+    height: 80,
   },
   notificationsContainer: {
     flex: 1,

@@ -131,8 +131,9 @@ export default function HomeScreen() {
           </TouchableOpacity>
           {/* Add more categories as needed */}
         </ScrollView>
-        <ScrollView
-          contentContainerStyle={styles.content}
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.recentJobsHeader}>
@@ -210,6 +211,8 @@ export default function HomeScreen() {
               <Text style={styles.promoButtonText}>Search Job</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.bottomSpace} />
         </ScrollView>
       </ScrollView>
     </SafeAreaView>
@@ -292,7 +295,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   content: {
-    paddingBottom: 24,
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  bottomSpace: {
+    height: 80,
   },
   recentJobsHeader: {
     marginBottom: 12,

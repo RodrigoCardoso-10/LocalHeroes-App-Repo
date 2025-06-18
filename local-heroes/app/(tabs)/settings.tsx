@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext'; // Adjusted path for AuthContext
 
@@ -69,7 +69,11 @@ export default function SettingsScreen() {
       <StatusBar barStyle="light-content" />
       <Header />
       {/* Settings Items */}
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Menu Items */}
         {menuItems.map((item) => (
           <TouchableOpacity 
@@ -94,7 +98,8 @@ export default function SettingsScreen() {
             <Text style={styles.logoutText}>Logout</Text>
           </View>
         </TouchableOpacity>
-      </View>
+        <View style={styles.bottomSpace} />
+      </ScrollView>
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
@@ -148,7 +153,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 16,
+    paddingBottom: 32,
   },
   menuItem: {
     flexDirection: 'row',
@@ -235,5 +243,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  bottomSpace: {
+    height: 80,
   },
 });
