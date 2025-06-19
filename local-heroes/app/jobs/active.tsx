@@ -21,10 +21,22 @@ import { useAuth } from '../././context/AuthContext';
 import { authService } from '../././services/api';
 import { Task } from '../types/task'; // Import the main Task type
 
-// Placeholder for User interface. Matches the one used in posted.tsx.
+// User interface to match AuthContext
 interface User {
-  id: string; // Confirmed 'id' is the property name for the user's ID
-  // Add other user properties here if needed (e.g., email, firstName, lastName)
+  _id: string; // MongoDB ObjectId - primary identifier
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  skills?: string[];
+  profilePicture?: string;
+  balance: number;
+  createdAt?: string;
+  updatedAt?: string;
+  emailVerifiedAt?: string | null;
 }
 
 /**
@@ -42,10 +54,9 @@ const MyActiveJobsScreen = () => {
   // Moved fetchActiveJobs outside useEffect to be accessible for retry button
   // Using React.useCallback to prevent unnecessary re-creations of the function
   const fetchActiveJobs = React.useCallback(async () => {
-    // FIX: Changed user?._id to user?.id
-    if (!user?.id) {
-      // Use user.id as the user identifier
-      console.warn('User not logged in or user ID not available. Cannot fetch active jobs.');
+    // Use user._id (MongoDB ObjectId) for backend compatibility
+    if (!user?._id) {
+      console.warn('User not logged in or user _id not available. Cannot fetch active jobs.');
       setLoading(false);
       return;
     }
@@ -54,8 +65,16 @@ const MyActiveJobsScreen = () => {
       setLoading(true); // Set loading true before fetch starts
       setError(null);
 
+      // Debug: Log user info
+      console.log('Fetching active jobs for user:', { _id: user._id, email: user.email });
+
       // Call authService.getTasks with a filter to fetch the user's active jobs
-      const response = await authService.getTasks({ acceptedBy: user.id });
+      // Use user._id (MongoDB ObjectId) for acceptedBy filter
+      const response = await authService.getTasks({ acceptedBy: user._id });
+
+      // Debug: Log response
+      console.log('Active jobs response:', response);
+
       setActiveJobs(response.tasks);
     } catch (err: any) {
       console.error('Failed to fetch active jobs:', err);
@@ -76,10 +95,7 @@ const MyActiveJobsScreen = () => {
    * Navigates to the details page for a specific job.
    */
   const handleJobPress = (jobId: string) => {
-    // Example: router.push(`/jobs/${jobId}`);
-    console.log(`Navigating to job details for: ${jobId}`);
-    Alert.alert('Job Details', `Navigating to details for job ID: ${jobId}`);
-    // You would navigate to a detailed job view here
+    router.push(`/jobs/active/${jobId}`);
   };
 
   // Render loading state

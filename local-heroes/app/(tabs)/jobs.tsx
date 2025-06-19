@@ -7,6 +7,7 @@ import {
   Alert,
   Dimensions,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -19,7 +20,7 @@ import { WebView } from "react-native-webview";
 import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/api";
-import { Task, TaskFilters, TasksResponse } from "../types/task";
+import { Task, TaskFilters } from "../types/task";
 
 const { width, height } = Dimensions.get("window");
 
@@ -72,8 +73,6 @@ const CustomCheckbox = ({
     </View>
   );
 };
-
-type LocationObject = { point?: any; address?: string; _id?: string };
 
 export default function JobsScreen() {
   // View mode state
@@ -217,40 +216,26 @@ export default function JobsScreen() {
 
   // Map-related functions
   const getCoordinatesForLocation = (
-    location: string
-  ): { latitude: number; longitude: number } => {
-    // Check if it's one of our known Dutch cities
-    if (DUTCH_CITIES_COORDS[location]) {
-      return DUTCH_CITIES_COORDS[location];
+    task: Task
+  ): { latitude: number; longitude: number } | null => {
+    const location = task.location as { point?: { coordinates: number[] } };
+    if (
+      location?.point?.coordinates &&
+      location.point.coordinates.length === 2
+    ) {
+      return {
+        latitude: location.point.coordinates[1],
+        longitude: location.point.coordinates[0],
+      };
     }
 
-    // If not found, place it randomly around Netherlands
-    const baseLatitude = 52.1326;
-    const baseLongitude = 5.2913;
-    const randomOffsetLat = (Math.random() - 0.5) * 2;
-    const randomOffsetLng = (Math.random() - 0.5) * 2;
-
-    return {
-      latitude: baseLatitude + randomOffsetLat,
-      longitude: baseLongitude + randomOffsetLng,
-    };
-  };
-
-  const getLocationAddress = (location: any): string => {
-    if (!location) {
-      return "Unknown Location";
+    // Fallback for older data or data without coordinates
+    const locationName = getLocationAddress(task.location);
+    if (locationName && DUTCH_CITIES_COORDS[locationName]) {
+      return DUTCH_CITIES_COORDS[locationName];
     }
-    if (typeof location === "object") {
-      if (location.address) {
-        return location.address;
-      }
-      if (location.point?.coordinates) {
-        return `${location.point.coordinates[1].toFixed(
-          4
-        )}, ${location.point.coordinates[0].toFixed(4)}`;
-      }
-    }
-    return "Unknown Location";
+
+    return null;
   };
 
   const getMarkerColor = (category?: string) => {
@@ -299,6 +284,26 @@ export default function JobsScreen() {
       default:
         return "💼";
     }
+  };
+
+  const getLocationAddress = (location: any): string => {
+    if (!location) {
+      return "Unknown Location";
+    }
+    if (typeof location === "string") {
+      return location;
+    }
+    if (typeof location === "object") {
+      if (location.address) {
+        return location.address;
+      }
+      if (location.point?.coordinates) {
+        return `${location.point.coordinates[1].toFixed(
+          4
+        )}, ${location.point.coordinates[0].toFixed(4)}`;
+      }
+    }
+    return "Unknown Location";
   };
 
   const generateMapHTML = () => {
@@ -436,94 +441,42 @@ export default function JobsScreen() {
   }, []);
   // Load tasks from backend
   const loadTasks = async (page: number = 1, resetResults: boolean = false) => {
-    if (!isMountedRef.current) return;
+    if (loading) return; // Prevent multiple simultaneous loads
+    setLoading(true);
+    const filters: TaskFilters = {
+      search: searchText,
+      minPrice: paymentRange[0],
+      maxPrice: paymentRange[1],
+      category: selectedCategories.join(","),
+      experienceLevel: selectedExperience.join(","),
+      datePosted: selectedDatePosted.join(","),
+      tags: selectedTags,
+      sortBy: sortOption,
+      page,
+      limit: 10,
+    };
 
     try {
-      // Only show loading spinner if not refreshing
-      if (!refreshing) {
-        setLoading(true);
-      }
+      const response = await authService.getTasks(filters);
+      console.log("Jobs API response:", response, "With filters:", filters);
 
-      const filters: TaskFilters = {
-        page,
-        limit: viewMode === "map" ? 500 : 10,
-      }; // Apply filters
-      if (searchText.trim()) {
-        filters.search = searchText.trim();
-      }
-      if (selectedLocation) {
-        filters.location = selectedLocation;
-      }
-      if (selectedCategories.length > 0) {
-        filters.category = selectedCategories[0]; // For simplicity, use first category
-      }
-      if (selectedExperience.length > 0) {
-        filters.experienceLevel = selectedExperience[0]; // For simplicity, use first experience level
-      }
-      if (paymentRange[0] > 0) {
-        filters.minPrice = paymentRange[0];
-      }
-      if (paymentRange[1] < 999) {
-        filters.maxPrice = paymentRange[1];
-      }
-      if (selectedDatePosted.length > 0) {
-        filters.datePosted = selectedDatePosted[0];
-      }
-      if (selectedTags.length > 0) {
-        filters.tags = selectedTags;
-      }
-      if (sortOption) {
-        filters.sortBy = sortOption;
-      }
-
-      const response: TasksResponse = await authService.getTasks(filters); // Check if component is still mounted before updating state
       if (!isMountedRef.current) return;
 
       if (resetResults || page === 1) {
         setTasks(response.tasks);
-        // Also create jobs with coordinates for map view
-        const jobMarkers: JobMarker[] = response.tasks
-          .filter((job: Task) => job.location)
-          .map((job: Task) => ({
-            ...job,
-            coordinate: getCoordinatesForLocation(
-              typeof job.location === "string"
-                ? job.location
-                : job.location?.address || ""
-            ),
-          }));
       } else {
         setTasks((prev) => [...prev, ...response.tasks]);
-      }
-
-      // Also create jobs with coordinates for map view
+      } // Also create jobs with coordinates for map view
       const jobMarkers = response.tasks
         .map((job: Task) => ({
           ...job,
-          coordinate: getCoordinatesForLocation(
-            typeof job.location === "string"
-              ? job.location
-              : job.location?.address || ""
-          ),
+          coordinate: getCoordinatesForLocation(job),
         }))
-        .filter((job): job is JobMarker => job.coordinate !== null);
+        .filter((job: JobMarker): job is JobMarker => job.coordinate !== null);
 
       if (resetResults || page === 1) {
         setJobsWithCoordinates(jobMarkers);
       } else {
-        setTasks((prev) => [...prev, ...response.tasks]);
-        // For pagination, append to existing map markers
-        const newJobMarkers: JobMarker[] = response.tasks
-          .filter((job: Task) => job.location)
-          .map((job: Task) => ({
-            ...job,
-            coordinate: getCoordinatesForLocation(
-              typeof job.location === "string"
-                ? job.location
-                : job.location?.address || ""
-            ),
-          }));
-        setJobsWithCoordinates((prev) => [...prev, ...newJobMarkers]);
         setJobsWithCoordinates((prev) => [...prev, ...jobMarkers]);
       }
 
@@ -643,62 +596,94 @@ export default function JobsScreen() {
 
   const { user } = useAuth();
 
+  const onMapJobPress = (job: Task) => {
+    router.push({
+      pathname: `/jobs/${job._id}` as any,
+      params: { id: job._id },
+    });
+  };
+
+  const onListJobPress = (job: Task) => {
+    router.push({
+      pathname: `/jobs/${job._id}` as any,
+      params: { id: job._id },
+    });
+  };
+  const handleApply = async (jobId: string) => {
+    try {
+      console.log('Applying for job with ID:', jobId);
+      await authService.applyForTask(jobId);
+      Alert.alert("Success", "You have successfully applied for the job.");
+    } catch (error: any) {
+      console.error('Apply error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        fullError: error,
+      });
+      Alert.alert('Error', error.message || 'Failed to apply for the job.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Header />
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* View Toggle */}
-        <View style={styles.viewToggleContainer}>
-          <TouchableOpacity
+      {/* View Toggle */}
+      <View style={styles.viewToggleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.viewToggleButton,
+            viewMode === "list" && styles.activeViewToggle,
+          ]}
+          onPress={() => setViewMode("list")}
+        >
+          <Ionicons
+            name="list"
+            size={20}
+            color={viewMode === "list" ? "#fff" : "#2A9D8F"}
+          />
+          <Text
             style={[
-              styles.viewToggleButton,
-              viewMode === "list" && styles.activeViewToggle,
+              styles.viewToggleText,
+              viewMode === "list" && styles.activeViewToggleText,
             ]}
-            onPress={() => setViewMode("list")}
           >
-            <Ionicons
-              name="list"
-              size={20}
-              color={viewMode === "list" ? "#fff" : "#2A9D8F"}
-            />
-            <Text
-              style={[
-                styles.viewToggleText,
-                viewMode === "list" && styles.activeViewToggleText,
-              ]}
-            >
-              List
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+            List
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.viewToggleButton,
+            viewMode === "map" && styles.activeViewToggle,
+          ]}
+          onPress={() => setViewMode("map")}
+        >
+          <Ionicons
+            name="map"
+            size={20}
+            color={viewMode === "map" ? "#fff" : "#2A9D8F"}
+          />
+          <Text
             style={[
-              styles.viewToggleButton,
-              viewMode === "map" && styles.activeViewToggle,
+              styles.viewToggleText,
+              viewMode === "map" && styles.activeViewToggleText,
             ]}
-            onPress={() => setViewMode("map")}
           >
-            <Ionicons
-              name="map"
-              size={20}
-              color={viewMode === "map" ? "#fff" : "#2A9D8F"}
-            />
-            <Text
-              style={[
-                styles.viewToggleText,
-                viewMode === "map" && styles.activeViewToggleText,
-              ]}
-            >
-              Map
-            </Text>
-          </TouchableOpacity>
-        </View>
+            Map
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-        {viewMode === "list" ? (
-          /* List View */
+      {viewMode === "list" ? (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* List View */}
           <View style={styles.scrollView}>
             {/* Top Buttons Row */}
             <View style={styles.topButtonsRow}>
@@ -1032,7 +1017,7 @@ export default function JobsScreen() {
                   <TouchableOpacity
                     key={task._id}
                     style={styles.taskCard}
-                    onPress={() => router.push(`/jobs/${task._id}` as any)}
+                    onPress={() => onListJobPress(task)}
                   >
                     <View style={styles.taskHeader}>
                       <Text style={styles.taskTitle}>{task.title}</Text>
@@ -1050,14 +1035,7 @@ export default function JobsScreen() {
                             color="#666"
                           />
                           <Text style={styles.taskMetaText}>
-                            {typeof task.location === "string"
-                              ? task.location
-                              : task.location &&
-                                typeof task.location === "object" &&
-                                "address" in task.location &&
-                                task.location.address
-                              ? task.location.address
-                              : "Unknown location"}
+                            {getLocationAddress(task.location)}
                           </Text>
                         </View>
                       )}
@@ -1119,20 +1097,7 @@ export default function JobsScreen() {
                     {/* Apply Now Button */}
                     <TouchableOpacity
                       style={[styles.applyButton, { marginTop: 10 }]}
-                      onPress={async () => {
-                        try {
-                          await authService.applyForTask(task._id);
-                          Alert.alert(
-                            "Application Sent",
-                            "You have applied for this job."
-                          );
-                        } catch (error: any) {
-                          Alert.alert(
-                            "Error",
-                            error.message || "Failed to apply for this job."
-                          );
-                        }
-                      }}
+                      onPress={() => handleApply(task._id)}
                     >
                       <Text style={styles.applyButtonText}>Apply Now</Text>
                     </TouchableOpacity>
@@ -1156,43 +1121,60 @@ export default function JobsScreen() {
               </View>
             )}
           </View>
-        ) : (
-          /* Map View */
-          <View style={styles.mapContainer}>
-            <WebView
-              ref={webViewRef}
-              source={{ html: generateMapHTML() }}
-              style={styles.map}
-              onMessage={handleWebViewMessage}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              startInLoadingState={true}
-              renderLoading={() => (
-                <View style={styles.webViewLoading}>
-                  <ActivityIndicator size="large" color="#2A9D8F" />
-                  <Text>Loading map...</Text>
-                </View>
-              )}
-              onError={(error) => {
-                console.error("WebView error:", error);
-                Alert.alert(
-                  "Map Error",
-                  "Failed to load the map. Please try the list view."
-                );
-              }}
-            />
-            {/* Map Controls */}
-            <View style={styles.mapControls}>
-              <TouchableOpacity
-                style={styles.mapControlButton}
-                onPress={focusOnNetherlands}
-              >
-                <Ionicons name="locate" size={24} color="#2A9D8F" />
-              </TouchableOpacity>
+          <View style={styles.bottomSpace} />
+        </ScrollView>
+      ) : (
+        /* Map View */
+        <View style={styles.mapContainer}>
+          <WebView
+            ref={webViewRef}
+            source={{ html: generateMapHTML() }}
+            style={styles.map}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={styles.webViewLoading}>
+                <ActivityIndicator size="large" color="#2A9D8F" />
+                <Text>Loading map...</Text>
+              </View>
+            )}
+            onError={(error) => {
+              console.error("WebView error:", error);
+              Alert.alert(
+                "Map Error",
+                "Failed to load the map. Please try the list view."
+              );
+            }}
+          />
+          {/* Map Controls */}
+          <View style={styles.mapControls}>
+            <TouchableOpacity
+              style={styles.mapControlButton}
+              onPress={focusOnNetherlands}
+            >
+              <Ionicons name="locate" size={24} color="#2A9D8F" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.mapControlButton}
+              onPress={onRefresh}
+            >
+              <Ionicons name="refresh" size={24} color="#2A9D8F" />
+            </TouchableOpacity>
+          </View>
+          {/* Job Statistics */}
+          <View style={styles.mapStatsContainer}>
+            <View style={styles.mapStatItem}>
+              <Text style={styles.mapStatNumber}>
+                {jobsWithCoordinates.length}
+              </Text>
+              <Text style={styles.mapStatLabel}>Jobs Found</Text>
             </View>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -1700,7 +1682,7 @@ const styles = StyleSheet.create({
   },
   mapControls: {
     position: "absolute",
-    top: 20,
+    top: 110,
     right: 20,
     flexDirection: "column",
   },
@@ -1718,7 +1700,7 @@ const styles = StyleSheet.create({
   mapStatsContainer: {
     position: "absolute",
     top: 20,
-    left: 20,
+    right: 20,
     backgroundColor: "white",
     padding: 15,
     borderRadius: 10,
@@ -1740,51 +1722,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     marginTop: 2,
-  },
-  mapLegendContainer: {
-    position: "absolute",
-    bottom: 20,
-    left: 20,
-    backgroundColor: "white",
-    padding: 10,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    maxWidth: width * 0.7,
-  },
-  mapLegendTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-  },
-  mapLegendItems: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  mapLegendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 10,
-    marginBottom: 5,
-  },
-  mapLegendMarker: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 5,
-  },
-  mapLegendIcon: {
-    fontSize: 10,
-  },
-  mapLegendText: {
-    fontSize: 10,
-    color: "#666",
-    textTransform: "capitalize",
   },
 });

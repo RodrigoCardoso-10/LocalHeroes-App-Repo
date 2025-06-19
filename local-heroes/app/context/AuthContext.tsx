@@ -8,11 +8,12 @@ import React, {
 } from "react";
 import { authService } from "../services/api";
 // Using SecureStore instead of AsyncStorage for secure storage of sensitive data
+import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 
 // Define user type
 type User = {
-  id: string;
+  _id: string; // MongoDB ObjectId - primary identifier
   email: string;
   firstName: string;
   lastName: string;
@@ -44,6 +45,7 @@ type AuthContextType = {
   }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<void>;
   clearError: () => void;
 };
 
@@ -58,6 +60,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const isLoggedIn = !!user;
 
@@ -109,15 +112,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setIsLoading(true);
     try {
       await authService.logout();
-    } catch (err) {
-      console.error("Logout error:", err);
+    } catch (err: any) {
+      // Only log error if it's not a 401
+      if (err?.statusCode !== 401) {
+        console.error("Logout error:", err);
+      }
+      // Do not show alert for 401
     } finally {
       setUser(null);
       await SecureStore.deleteItemAsync("user");
       await SecureStore.deleteItemAsync("accessToken");
       setIsLoading(false);
+      // Redirect to login screen
+      router.replace("/login");
     }
-  }, []);
+  }, [router]);
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -249,6 +258,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Refresh user data (including balance)
+  const refreshUser = async () => {
+    try {
+      setError(null);
+      const userData = await authService.checkAuth();
+      setUser(userData);
+      await SecureStore.setItemAsync('user', JSON.stringify(userData));
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh user data');
+      throw err;
+    }
+  };
+
   // Clear error
   const clearError = () => {
     setError(null);
@@ -265,6 +287,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         register,
         logout,
         updateUser,
+        refreshUser,
         clearError,
       }}
     >

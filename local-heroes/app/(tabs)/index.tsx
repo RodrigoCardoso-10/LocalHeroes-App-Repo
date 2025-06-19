@@ -16,7 +16,7 @@ import JobCard from "../components/JobCard";
 import { Images } from "../constants/Images";
 import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/api";
-import { Task } from "../types/task";
+import { Task, TaskStatus } from "../types/task";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -54,10 +54,18 @@ export default function HomeScreen() {
   const loadRecentJobs = async () => {
     try {
       setLoading(true);
-      const response = await authService.getTasks({ page: 1, limit: 5 });
+      const response = await authService.getTasks({
+        page: 1,
+        limit: 5,
+        status: TaskStatus.OPEN,
+      });
+      console.log("Recent jobs API response:", response);
       setRecentJobs(response.tasks);
     } catch (error) {
       console.error("Failed to load recent jobs:", error);
+      if (error && (error as any).response) {
+        console.error("Error response:", (error as any).response.data);
+      }
     } finally {
       setLoading(false);
     }
@@ -66,60 +74,6 @@ export default function HomeScreen() {
   useEffect(() => {
     loadRecentJobs();
   }, []);
-
-  // Sample job data based on the Figma design (fallback)
-  const jobData = [
-    {
-      id: 1,
-      title: "Financial Security Analyst",
-      company: "Tech Solutions Inc.",
-      location: "New York",
-      type: "Full-time",
-      salary: "$70k - $90k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F0F8F7",
-    },
-    {
-      id: 2,
-      title: "Software Quality Facilitator",
-      company: "Innovate Corp.",
-      location: "Remote",
-      type: "Part-time",
-      salary: "$60k - $80k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F7F0F8",
-    },
-    {
-      id: 3,
-      title: "Internal Integration Planner",
-      company: "Global Ventures",
-      location: "San Francisco",
-      type: "Full-time",
-      salary: "$80k - $100k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F8F7F0",
-    },
-    {
-      id: 4,
-      title: "District Intranet Coordinator",
-      company: "City Connect",
-      location: "Chicago",
-      type: "Contract",
-      salary: "$40k - $60k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F0F8F7",
-    },
-    {
-      id: 5,
-      title: "Customer Service Facilitator",
-      company: "Service First",
-      location: "Austin",
-      type: "Full-time",
-      salary: "$50k - $70k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F7F0F8",
-    },
-  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -160,9 +114,9 @@ export default function HomeScreen() {
             <Text style={styles.recentJobsSubtitle}>
               {loading
                 ? "Loading..."
-                : `Showing ${
-                    recentJobs.length > 0 ? recentJobs.length : jobData.length
-                  } recent jobs`}
+                : recentJobs.length > 0
+                ? `Showing ${recentJobs.length} recent jobs`
+                : "No recent jobs available"}
             </Text>
           </View>
 
@@ -183,31 +137,20 @@ export default function HomeScreen() {
                 />
               ))
             ) : (
-              jobData.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={{
-                    _id: job.id.toString(),
-                    title: job.title,
-                    description: job.company || "No description",
-                    location: { address: job.location },
-                    price:
-                      typeof job.salary === "string"
-                        ? parseInt(job.salary.replace(/[^0-9]/g, "")) || 0
-                        : 0,
-                    category: job.type,
-                    tags: [],
-                    status: "OPEN",
-                    postedBy: { firstName: "Company", lastName: "" },
-                  }}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/jobs/[id]",
-                      params: { id: job.id },
-                    })
-                  }
-                />
-              ))
+              <View style={styles.noJobsContainer}>
+                <Text style={styles.noJobsText}>No recent jobs available</Text>
+                <Text style={styles.noJobsSubtext}>
+                  Check back later for new opportunities
+                </Text>
+                <TouchableOpacity
+                  style={styles.browseJobsButton}
+                  onPress={() => router.push("/(tabs)/jobs")}
+                >
+                  <Text style={styles.browseJobsButtonText}>
+                    Browse All Jobs
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -361,6 +304,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     textAlign: "center",
+  },
+  noJobsContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  noJobsText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  noJobsSubtext: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  browseJobsButton: {
+    backgroundColor: "#2BB6A3",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  browseJobsButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   jobNameContainer: {
     marginBottom: 8,
