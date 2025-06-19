@@ -14,31 +14,7 @@ type Errors = {
     name?: string;
 };
 
-const validateCardNumber = (number: string) => {
-    const cleaned = number.replace(/\D/g, '');
-    if (cleaned.length < 13 || cleaned.length > 19) return 'Invalid card number';
-    return '';
-};
 
-const validateExpiry = (expiry: string) => {
-    if (!/^\d{2} \/ \d{2}$/.test(expiry)) return 'Invalid expiry format';
-    const [month, year] = expiry.split(' / ').map(Number);
-    if (month < 1 || month > 12) return 'Invalid month';
-    const now = new Date();
-    const currentYear = now.getFullYear() % 100;
-    if (year < currentYear || (year === currentYear && month < now.getMonth() + 1)) return 'Card expired';
-    return '';
-};
-
-const validateCvc = (cvc: string) => {
-    if (!/^\d{3,4}$/.test(cvc)) return 'Invalid CVC';
-    return '';
-};
-
-const validateName = (name: string) => {
-    if (!name.trim()) return 'Name required';
-    return '';
-};
 const maskCardNumber = (number: string) => {
   if (!number) return '';
   const visible = number.slice(-4);
@@ -54,8 +30,26 @@ export default function BankDetails() {
   const [showCvcInfo, setShowCvcInfo] = useState(false);
 
   const handleConfirm = () => {
-    if (cardNumber && expiry && cvc && name) {
+    // Basic regex for 16-digit card number (with or without spaces)
+    const cardNumberValid = /^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$/.test(cardNumber.replace(/\s/g, ''));
+    // Expiry MM / YY or MM/YY
+    const expiryValid = /^(0[1-9]|1[0-2]) ?\/ ?\d{2}$/.test(expiry);
+    // CVC: 3 or 4 digits
+    const cvcValid = /^\d{3,4}$/.test(cvc);
+
+    if (cardNumber && expiry && cvc && name && cardNumberValid && expiryValid && cvcValid) {
       setConfirmed(true);
+    } else {
+      // Provide specific feedback for each invalid field
+      const errors: string[] = [];
+      if (!cardNumber) errors.push('Card number is required.');
+      else if (!cardNumberValid) errors.push('Card number is invalid.');
+      if (!expiry) errors.push('Expiry date is required.');
+      else if (!expiryValid) errors.push('Expiry date is invalid.');
+      if (!cvc) errors.push('Security code is required.');
+      else if (!cvcValid) errors.push('Security code is invalid.');
+      if (!name) errors.push('Name on card is required.');
+      alert(errors.join('\n'));
     }
   };
 
@@ -123,15 +117,19 @@ export default function BankDetails() {
       ) : (
         <View style={styles.cardPreviewContainer}>
           <Text style={styles.previewLabel}>Your Card</Text>
-          <View style={styles.cardPreview}>
-            <Text style={styles.cardPreviewNumber}>{maskCardNumber(cardNumber)}</Text>
-            <View style={styles.cardPreviewRow}>
-              <Text style={styles.cardPreviewLabel}>Exp:</Text>
-              <Text style={styles.cardPreviewValue}>{expiry}</Text>
-              <Text style={[styles.cardPreviewLabel, { marginLeft: 16 }]}>Name:</Text>
-              <Text style={styles.cardPreviewValue}>{name}</Text>
+          <View style={styles.cardPreviewReal}>
+            <Text style={styles.cardPreviewNumberReal}>{maskCardNumber(cardNumber)}</Text>
+            <View style={styles.cardPreviewRowReal}>
+              <View>
+                <Text style={styles.cardPreviewLabelReal}>VALID THRU</Text>
+                <Text style={styles.cardPreviewValueReal}>{expiry}</Text>
+              </View>
             </View>
-            {/* No CVC or full card number shown after confirmation */}
+            <Text style={styles.cardPreviewNameReal}>{name.toUpperCase()}</Text>
+            <Image
+              source={require('../../assets/images/mastercard_payment_icon.png')}
+              style={styles.cardPreviewLogo}
+            />
           </View>
         </View>
       )}
@@ -156,9 +154,60 @@ const styles = StyleSheet.create({
   tooltipText: { color: '#fff', fontSize: 12 },
   cardPreviewContainer: { alignItems: 'center', marginTop: 32 },
   previewLabel: { fontSize: 16, color: '#888', marginBottom: 8 },
-  cardPreview: { backgroundColor: '#2A9D8F', borderRadius: 16, padding: 24, width: 320, maxWidth: '100%' },
-  cardPreviewNumber: { color: '#fff', fontSize: 22, letterSpacing: 2, marginBottom: 16 },
-  cardPreviewRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  cardPreviewLabel: { color: '#fff', fontWeight: 'bold', marginRight: 4 },
-  cardPreviewValue: { color: '#fff', fontSize: 16, marginRight: 8 },
+  cardPreviewReal: {
+    backgroundColor: '#A9A9A9',
+    borderRadius: 12,
+    padding: 24,
+    width: 300,
+    maxWidth: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
+    position: 'relative',
+    minHeight: 170,
+    justifyContent: 'space-between',
+  },
+  cardPreviewNumberReal: {
+    color: '#fff',
+    fontSize: 20,
+    letterSpacing: 2,
+    fontWeight: '500',
+    marginBottom: 18,
+  },
+  cardPreviewRowReal: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 18,
+  },
+  cardPreviewLabelReal: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '300',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  cardPreviewValueReal: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  cardPreviewNameReal: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: 8,
+    marginBottom: 0,
+    letterSpacing: 1,
+  },
+  cardPreviewLogo: {
+    position: 'absolute',
+    bottom: 18,
+    right: 18,
+    width: 40,
+    height: 28,
+    resizeMode: 'contain',
+  },
 });
