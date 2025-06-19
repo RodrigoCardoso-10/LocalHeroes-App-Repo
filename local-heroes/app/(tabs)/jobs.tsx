@@ -489,7 +489,11 @@ export default function JobsScreen() {
             coordinate: getCoordinatesForLocation(
               typeof job.location === "string"
                 ? job.location
-                : job.location?.address || ""
+                : job.location &&
+                  typeof job.location === "object" &&
+                  "address" in job.location
+                ? (job.location as { address?: string }).address || ""
+                : ""
             ),
           }));
       } else {
@@ -503,7 +507,11 @@ export default function JobsScreen() {
           coordinate: getCoordinatesForLocation(
             typeof job.location === "string"
               ? job.location
-              : job.location?.address || ""
+              : job.location &&
+                typeof job.location === "object" &&
+                "address" in job.location
+              ? (job.location as { address?: string }).address || ""
+              : ""
           ),
         }))
         .filter((job): job is JobMarker => job.coordinate !== null);
@@ -520,7 +528,11 @@ export default function JobsScreen() {
             coordinate: getCoordinatesForLocation(
               typeof job.location === "string"
                 ? job.location
-                : job.location?.address || ""
+                : job.location &&
+                  typeof job.location === "object" &&
+                  "address" in job.location
+                ? (job.location as { address?: string }).address || ""
+                : ""
             ),
           }));
         setJobsWithCoordinates((prev) => [...prev, ...newJobMarkers]);
@@ -1054,10 +1066,10 @@ export default function JobsScreen() {
                               ? task.location
                               : task.location &&
                                 typeof task.location === "object" &&
-                                "address" in task.location &&
-                                task.location.address
-                              ? task.location.address
-                              : "Unknown location"}
+                                "address" in task.location
+                              ? (task.location as { address?: string })
+                                  .address || ""
+                              : ""}
                           </Text>
                         </View>
                       )}
