@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -424,8 +424,84 @@ export const authService = {
     }
   },
 
-  // Note: Getting other users' profiles is not supported by the backend for privacy reasons
-  // Only the current user can access their own profile via checkAuth() method
+  // Get user profile by ID or email
+  getUserProfile: async (identifier: string) => {
+    try {
+      console.log('Fetching user profile:', { identifier });
+
+      // Check if the identifier looks like an email
+      const isEmail = identifier.includes('@');
+
+      // Use the new backend endpoint for email lookups
+      const endpoints = isEmail
+        ? [
+            `/users/by-email/${encodeURIComponent(identifier)}`
+          ]
+        : [`/users/profile/${identifier}`];
+
+      // Try each endpoint until one succeeds
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Attempting to fetch profile from endpoint: ${endpoint}`);
+
+          const response = await api.get(endpoint, {
+            timeout: 10000, // 10-second timeout
+            headers: {
+              'X-Request-Context': JSON.stringify({
+                source: 'mobile-app',
+                requestType: isEmail ? 'user-profile-by-email' : 'user-profile-by-id',
+                timestamp: new Date().toISOString(),
+              }),
+            },
+          });
+
+          console.log('User profile retrieved successfully:', {
+            identifier,
+            profileData: {
+              firstName: response.data.firstName,
+              lastName: response.data.lastName,
+              email: response.data.email,
+              profileFetchTimestamp: new Date().toISOString(),
+            },
+          });
+
+          return response.data;
+        } catch (endpointError: any) {
+          console.warn(`Failed to fetch profile from ${endpoint}:`, {
+            errorMessage: endpointError.message,
+            errorResponse: endpointError.response?.data,
+          });
+
+          // If it's the last endpoint, rethrow the error
+          if (endpoint === endpoints[endpoints.length - 1]) {
+            throw endpointError;
+          }
+        }
+      }
+
+      // This should never be reached, but TypeScript requires a return
+      throw new Error('Unable to retrieve user profile');
+    } catch (error: any) {
+      console.error('Failed to retrieve user profile:', {
+        identifier,
+        errorMessage: error.message,
+        errorResponse: error.response?.data,
+        fullError: JSON.stringify(error, null, 2),
+      });
+
+      // More detailed error handling
+      if (error.response) {
+        // Server responded with an error
+        throw new Error(error.response.data?.message || `Failed to retrieve profile. Status: ${error.response.status}`);
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error('No response from server. Please check your connection.');
+      } else {
+        // Something happened in setting up the request
+        throw new Error(`Profile retrieval error: ${error.message}`);
+      }
+    }
+  },
 };
 
 export default api;
