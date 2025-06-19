@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -402,12 +402,10 @@ export const authService = {
       // Check if the identifier looks like an email
       const isEmail = identifier.includes('@');
 
-      // Array of possible endpoints to try
+      // Use the new backend endpoint for email lookups
       const endpoints = isEmail
         ? [
-            `/users/profile?email=${encodeURIComponent(identifier)}`,
-            `/users/profile/email/${encodeURIComponent(identifier)}`,
-            `/users/by-email/${encodeURIComponent(identifier)}`,
+            `/users/by-email/${encodeURIComponent(identifier)}`
           ]
         : [`/users/profile/${identifier}`];
 

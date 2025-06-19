@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Header from "../components/Header";           
+import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
@@ -118,7 +118,7 @@ export default function PrivacyScreen() {
             }}
           >
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.replace("/settings")}
               style={{ marginRight: 8 }}
             >
               <Text style={{ fontSize: 18, color: "#0ca678" }}>{"< Back"}</Text>

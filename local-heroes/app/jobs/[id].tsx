@@ -44,7 +44,7 @@ export default function JobDetailScreen() {
 
       // Add more robust error handling for task retrieval
       try {
-        const response = await authService.getTask(id as string);
+        const response = await authService.getTaskById(id as string);
         setJob(response);
 
         // Comprehensive logging of job and poster details
@@ -140,7 +140,7 @@ export default function JobDetailScreen() {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      const response = await authService.getTask(id as string);
+      const response = await authService.getTaskById(id as string);
       setJob(response);
     } catch (error: any) {
       console.error("Failed to refresh job details:", error);
