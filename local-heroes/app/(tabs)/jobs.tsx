@@ -609,13 +609,19 @@ export default function JobsScreen() {
       params: { id: job._id },
     });
   };
-
   const handleApply = async (jobId: string) => {
     try {
+      console.log('Applying for job with ID:', jobId);
       await authService.applyForTask(jobId);
       Alert.alert("Success", "You have successfully applied for the job.");
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to apply for the job.");
+      console.error('Apply error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        fullError: error,
+      });
+      Alert.alert('Error', error.message || 'Failed to apply for the job.');
     }
   };
 

@@ -21,11 +21,22 @@ import { useAuth } from '../././context/AuthContext';
 import { authService } from '../././services/api';
 import { Task, TaskStatus } from '../types/task';
 
-// Placeholder for User interface.
-// FIX: Confirmed 'id' is the property name for the user's ID
+// User interface to match AuthContext
 interface User {
-  id: string; // Changed from _id to id to match the error's expectation
-  // Add other user properties here if needed (e.g., email, firstName, lastName)
+  _id: string; // MongoDB ObjectId - primary identifier
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  skills?: string[];
+  profilePicture?: string;
+  balance: number;
+  createdAt?: string;
+  updatedAt?: string;
+  emailVerifiedAt?: string | null;
 }
 
 /**
@@ -46,10 +57,9 @@ const MyPostedJobsScreen = () => {
   // Using React.useCallback to prevent unnecessary re-creations of the function
   // It's still dependent on 'user' and other state setters
   const fetchPostedJobs = useCallback(async () => {
-    // FIX: Changed user?._id to user?.id to resolve TypeScript error
-    if (!user?.id) {
-      // Use user.id as the user identifier
-      console.warn('User not logged in or user ID not available. Cannot fetch posted jobs.');
+    // Use MongoDB _id instead of UUID id for task lookups
+    if (!user?._id) {
+      console.warn('User not logged in or user MongoDB ID not available. Cannot fetch posted jobs.');
       setLoading(false);
       return;
     }
@@ -58,11 +68,36 @@ const MyPostedJobsScreen = () => {
       setLoading(true); // Set loading true before fetch starts
       setError(null);
 
-      // FIX: Changed user._id to user.id in the API call
-      const response = await authService.getTasks({ postedBy: user.id });
-      setPostedJobs(response.tasks);
+      console.log('Fetching posted jobs for user:', {
+        userMongoId: user._id,
+        userEmail: user.email,
+        userName: `${user.firstName} ${user.lastName}`,
+      });
+
+      // Use user._id (MongoDB ObjectId) for task lookups
+      const response = await authService.getTasks({ postedBy: user._id });
+
+      console.log('Posted jobs API response:', {
+        totalTasks: response.tasks?.length || 0,
+        tasks:
+          response.tasks?.map((task: Task) => ({
+            id: task._id,
+            title: task.title,
+            status: task.status,
+            postedBy: task.postedBy,
+          })) || [],
+        fullResponse: response,
+      });
+
+      setPostedJobs(response.tasks || []);
     } catch (err: any) {
-      console.error('Failed to fetch posted jobs:', err);
+      console.error('Failed to fetch posted jobs:', {
+        error: err,
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        userMongoId: user._id,
+      });
       setError(err.message || 'Could not load posted jobs.');
       Alert.alert('Error', err.message || 'Failed to load posted jobs.');
     } finally {

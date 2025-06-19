@@ -293,12 +293,19 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to delete task' };
     }
   },
-
   applyForTask: async (id: string) => {
     try {
-      const response = await api.post(`/tasks/${id}/apply`);
+      console.log('Making apply request for task ID:', id);
+      // Send an empty body since the endpoint doesn't expect any data
+      const response = await api.patch(`/tasks/${id}/apply`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Apply for task error:', {
+        taskId: id,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to apply for task' };
     }
   },
@@ -311,21 +318,35 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to fetch applicants' };
     }
   },
-
   acceptApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.post(`/tasks/${taskId}/accept/${applicantId}`);
+      console.log('Accepting applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/accept`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Accept applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to accept applicant' };
     }
   },
-
   denyApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.post(`/tasks/${taskId}/deny/${applicantId}`);
+      console.log('Denying applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/deny`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Deny applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to deny applicant' };
     }
   },
