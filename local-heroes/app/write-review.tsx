@@ -32,7 +32,7 @@ export default function WriteReviewScreen() {
 
   const handleSubmit = () => {
     // Validate all required fields
-    if (!reviewedUserId) {
+    if (!userId) {
       Alert.alert("Error", "No user selected to review.");
       return;
     }
