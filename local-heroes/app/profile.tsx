@@ -18,12 +18,13 @@ import { useAuth } from './context/AuthContext';
 import { useReviews } from './context/ReviewsContext';
 import { authService } from './services/api';
 import { User, Review } from './types/task';
+import ProfileImage from './components/ProfileImage';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
   const { id, email } = useLocalSearchParams();
   const { reviews } = useReviews();
-  const [profileData, setProfileData] = useState<User>({});
+  const [profileData, setProfileData] = useState<User | undefined>(undefined);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,15 +32,15 @@ export default function ProfileScreen() {
     const fetchProfileData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Log incoming parameters for debugging
         console.log('Profile Screen - Fetch Parameters:', {
           id: id,
           email: email,
           currentUser: {
             id: (user as any)?._id,
-            email: (user as any)?.email
-          }
+            email: (user as any)?.email,
+          },
         });
 
         // Determine the identifier to use
@@ -55,42 +56,40 @@ export default function ProfileScreen() {
               fetchedProfileId: fetchedProfile._id,
               fetchedProfileEmail: fetchedProfile.email,
               currentUserId: (user as any)?._id,
-              currentUserEmail: (user as any)?.email
+              currentUserEmail: (user as any)?.email,
             });
 
             // Set the profile data
             setProfileData(fetchedProfile);
 
             // Determine if this is the current user's profile
-            const isCurrentUserProfile = 
-              (fetchedProfile._id === (user as any)?._id) || 
-              (fetchedProfile.email === (user as any)?.email);
+            const isCurrentUserProfile =
+              fetchedProfile._id === (user as any)?._id || fetchedProfile.email === (user as any)?.email;
 
             console.log('Is Own Profile Check:', {
               idMatch: fetchedProfile._id === (user as any)?._id,
               emailMatch: fetchedProfile.email === (user as any)?.email,
-              isCurrentUserProfile: isCurrentUserProfile
+              isCurrentUserProfile: isCurrentUserProfile,
             });
 
             setIsOwnProfile(isCurrentUserProfile);
           } catch (profileError) {
             console.error('Profile Fetch Error:', profileError);
-            
+
             // More informative error handling
-            Alert.alert(
-              'Profile Error', 
-              'Unable to retrieve the requested profile. Please try again.', 
-              [{ 
-                text: 'OK', 
-                onPress: () => router.back() 
-              }]
-            );
+            Alert.alert('Profile Error', 'Unable to retrieve the requested profile. Please try again.', [
+              {
+                text: 'OK',
+                onPress: () => router.back(),
+              },
+            ]);
           }
         } else {
           // If no identifier, show current user's profile
           if (user) {
             setProfileData({
               _id: (user as any)._id || '',
+              id: (user as any).id || '',
               firstName: (user as any).firstName || '',
               lastName: (user as any).lastName || '',
               email: (user as any).email || '',
@@ -105,15 +104,13 @@ export default function ProfileScreen() {
         }
       } catch (error) {
         console.error('Unexpected error in profile retrieval:', error);
-        
-        Alert.alert(
-          'Unexpected Error', 
-          'An unexpected error occurred while retrieving the profile.', 
-          [{ 
-            text: 'OK', 
-            onPress: () => router.back() 
-          }]
-        );
+
+        Alert.alert('Unexpected Error', 'An unexpected error occurred while retrieving the profile.', [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]);
       } finally {
         setIsLoading(false);
       }
@@ -123,15 +120,24 @@ export default function ProfileScreen() {
   }, [id, email, user]);
 
   // Filter reviews for this specific profile
-  const userReviews = reviews.filter(review => 
-    (review as any).reviewedUserId && 
-    (profileData as any)._id && 
-    (review as any).reviewedUserId === (profileData as any)._id
+  const userReviews = reviews.filter(
+    (review) =>
+      (review as any).reviewedUserId &&
+      (profileData as any)?._id &&
+      (review as any).reviewedUserId === (profileData as any)?._id
   );
 
-  if (isLoading) {
+  if (isLoading || !profileData) {
     return (
       <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.placeholder} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0ca678" />
           <Text style={styles.loadingText}>Loading profile...</Text>
@@ -150,32 +156,31 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <TouchableOpacity onPress={() => router.push('/edit-profile' as any)} style={styles.editButton}>
-            <Ionicons name="create-outline" size={24} color="#0ca678" />
+            <Ionicons name="create-outline" size={24} color="white" />
           </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
         )}
       </View>
 
       <ScrollView style={styles.content}>
+        {' '}
         {/* Profile Picture */}
         <View style={styles.profilePictureContainer}>
-          <Image
-            source={{
-              uri: (profileData as any).profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
-            }}
-            style={styles.profilePicture}
-          />
+          <ProfileImage uri={(profileData as any)?.profilePicture} size={120} style={styles.profilePicture} />
           <View style={styles.nameContainer}>
-            <Text style={styles.fullName}>{`${(profileData as any).firstName || ''} ${(profileData as any).lastName || ''}`}</Text>
+            <Text style={styles.fullName}>{`${(profileData as any).firstName || ''} ${
+              (profileData as any).lastName || ''
+            }`}</Text>
             <Text style={styles.emailText}>{(profileData as any).email || ''}</Text>
           </View>
         </View>
-
         {/* Personal Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Phone</Text>
             <Text style={styles.infoValue}>{(profileData as any).phone || 'Not provided'}</Text>
@@ -186,7 +191,6 @@ export default function ProfileScreen() {
             <Text style={styles.infoValue}>{(profileData as any).address || 'Not provided'}</Text>
           </View>
         </View>
-
         {/* Skills Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skills</Text>
@@ -202,32 +206,51 @@ export default function ProfileScreen() {
             )}
           </View>
         </View>
-
         {/* Bio Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Bio</Text>
-          <Text style={styles.bioText}>
-            {(profileData as any).bio || 'No bio provided yet'}
-          </Text>
+          <Text style={styles.bioText}>{(profileData as any).bio || 'No bio provided yet'}</Text>
         </View>
-
         {/* Reviews Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.sectionTitle}>Reviews</Text>
+            <View style={styles.reviewStats}>
+              <View style={styles.ratingContainer}>
+                {[...Array(5)].map((_, i) => (
+                  <Ionicons
+                    key={i}
+                    name={
+                      i <
+                      Math.round(
+                        userReviews.reduce((acc, review) => acc + ((review as any).rating || 0), 0) /
+                          (userReviews.length || 1)
+                      )
+                        ? 'star'
+                        : 'star-outline'
+                    }
+                    size={16}
+                    color="#FFD700"
+                  />
+                ))}
+              </View>
+              <Text style={styles.reviewCount}>
+                {userReviews.length} {userReviews.length === 1 ? 'review' : 'reviews'}
+              </Text>
+            </View>
+          </View>
           {userReviews.length > 0 ? (
             userReviews.map((review: Review, index: number) => (
               <View key={index} style={styles.reviewContainer}>
-                <Text style={styles.reviewerName}>
-                  {(review as any).reviewerName || 'Anonymous'}
-                </Text>
+                <Text style={styles.reviewerName}>{(review as any).reviewerName || 'Anonymous'}</Text>
                 <Text style={styles.reviewText}>{(review as any).comment}</Text>
                 <View style={styles.ratingContainer}>
                   {[...Array(5)].map((_, i) => (
-                    <Ionicons 
-                      key={i} 
-                      name={i < ((review as any).rating || 0) ? "star" : "star-outline"} 
-                      size={16} 
-                      color="#FFD700" 
+                    <Ionicons
+                      key={i}
+                      name={i < ((review as any).rating || 0) ? 'star' : 'star-outline'}
+                      size={16}
+                      color="#FFD700"
                     />
                   ))}
                 </View>
@@ -236,8 +259,28 @@ export default function ProfileScreen() {
           ) : (
             <Text style={styles.noContentText}>No reviews yet</Text>
           )}
+          <View style={styles.reviewButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.reviewButton, styles.viewReviewsButton]}
+              onPress={() => router.push('/Reviews')}
+            >
+              <Text style={styles.viewReviewsText}>View All Reviews</Text>
+              <Ionicons name="arrow-forward" size={20} color="#0ca678" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.reviewButton, styles.writeReviewButton]}
+              onPress={() =>
+                router.push({
+                  pathname: '/write-review',
+                  params: { userId: profileData._id },
+                })
+              }
+            >
+              <Text style={styles.writeReviewText}>Write a Review</Text>
+              <Ionicons name="create-outline" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
-
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
@@ -247,12 +290,13 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     marginTop: 10,
@@ -260,26 +304,31 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
-    backgroundColor: '#000',
-    padding: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  backButton: {
-    padding: 4,
+    justifyContent: 'space-between',
+    backgroundColor: '#000',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   headerTitle: {
-    color: 'white',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+    color: 'white',
+  },
+  backButton: {
+    padding: 8,
   },
   editButton: {
-    padding: 4,
+    padding: 8,
+  },
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
     padding: 16,
+    backgroundColor: '#f5f5f5',
   },
   profilePictureContainer: {
     alignItems: 'center',
@@ -389,5 +438,49 @@ const styles = StyleSheet.create({
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  reviewButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  reviewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    padding: 16,
+  },
+  viewReviewsButton: {
+    backgroundColor: '#f8f9fa',
+  },
+  writeReviewButton: {
+    backgroundColor: '#0ca678',
+  },
+  viewReviewsText: {
+    fontSize: 16,
+    color: '#0ca678',
+    fontWeight: '500',
+  },
+  writeReviewText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '500',
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  reviewStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: '#666',
   },
 });

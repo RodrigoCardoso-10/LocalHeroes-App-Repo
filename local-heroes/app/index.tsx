@@ -21,7 +21,7 @@ const HomePage = () => {
     <ProtectedRoute>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.logo}>LocalHero</Text>
+          <Text style={styles.logo}>LocalHeroes</Text>
           <View style={styles.headerButtons}>
             <TouchableOpacity onPress={handleLogout}>
               <Text style={styles.headerButtonText}>Logout</Text>
@@ -80,11 +80,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#000',
   },
   logo: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   headerButtons: {
     flexDirection: 'row',

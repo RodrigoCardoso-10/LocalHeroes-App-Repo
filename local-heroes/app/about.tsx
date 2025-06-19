@@ -13,14 +13,10 @@ export default function AboutScreen() {
         <View style={styles.heroSection}>
           <Text style={styles.title}>About LocalHeroes</Text>
           <View style={styles.heroImageContainer}>
-            <Image 
-              source={require('../assets/images/localheroes-logo.png')} 
-              style={styles.logo} 
-              resizeMode="contain" 
-            />
+            <Image source={require('../assets/images/localheroeslogo.png')} style={styles.logo} resizeMode="contain" />
           </View>
         </View>
-        
+
         {/* Mission Section */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -28,9 +24,9 @@ export default function AboutScreen() {
             <Text style={styles.sectionTitle}>Our Mission</Text>
           </View>
           <Text style={styles.cardText}>
-            At LocalHeroes, we're dedicated to building stronger communities by connecting skilled individuals with local
-            opportunities. Our platform makes it easy to find reliable professionals in your area or showcase your talents
-            to those who need them.
+            At LocalHeroes, we're dedicated to building stronger communities by connecting skilled individuals with
+            local opportunities. Our platform makes it easy to find reliable professionals in your area or showcase your
+            talents to those who need them.
           </Text>
         </View>
 
@@ -41,7 +37,9 @@ export default function AboutScreen() {
             <Text style={styles.sectionTitle}>Our Vision</Text>
           </View>
           <Text style={styles.cardText}>
-            We envision a world where communities thrive through local collaboration and mutual support. By empowering local talent and making quality services accessible to everyone, we're building a more connected and resilient society.
+            We envision a world where communities thrive through local collaboration and mutual support. By empowering
+            local talent and making quality services accessible to everyone, we're building a more connected and
+            resilient society.
           </Text>
         </View>
 
@@ -51,7 +49,7 @@ export default function AboutScreen() {
             <FontAwesome5 name="heart" size={20} color="#2A9D8F" />
             <Text style={styles.sectionTitle}>Our Values</Text>
           </View>
-          
+
           <View style={styles.valueItem}>
             <View style={styles.valueIconContainer}>
               <FontAwesome5 name="handshake" size={16} color="#2A9D8F" />
@@ -61,24 +59,28 @@ export default function AboutScreen() {
               <Text style={styles.valueText}>We prioritize the needs of local communities in everything we do.</Text>
             </View>
           </View>
-          
+
           <View style={styles.valueItem}>
             <View style={styles.valueIconContainer}>
               <FontAwesome5 name="shield-alt" size={16} color="#2A9D8F" />
             </View>
             <View style={styles.valueContent}>
               <Text style={styles.valueTitle}>Trust & Quality</Text>
-              <Text style={styles.valueText}>We ensure reliable, high-quality services through our vetted professionals.</Text>
+              <Text style={styles.valueText}>
+                We ensure reliable, high-quality services through our vetted professionals.
+              </Text>
             </View>
           </View>
-          
+
           <View style={styles.valueItem}>
             <View style={styles.valueIconContainer}>
               <FontAwesome5 name="users" size={16} color="#2A9D8F" />
             </View>
             <View style={styles.valueContent}>
               <Text style={styles.valueTitle}>Inclusivity</Text>
-              <Text style={styles.valueText}>We welcome and support diverse talents and needs within our communities.</Text>
+              <Text style={styles.valueText}>
+                We welcome and support diverse talents and needs within our communities.
+              </Text>
             </View>
           </View>
         </View>
@@ -90,7 +92,9 @@ export default function AboutScreen() {
             <Text style={styles.sectionTitle}>Our Team</Text>
           </View>
           <Text style={styles.cardText}>
-            LocalHeroes was founded by a passionate team of community advocates and tech innovators who believe in the power of local connections. Our diverse team brings together expertise in technology, community building, and service delivery.
+            LocalHeroes was founded by a passionate team of community advocates and tech innovators who believe in the
+            power of local connections. Our diverse team brings together expertise in technology, community building,
+            and service delivery.
           </Text>
         </View>
       </ScrollView>

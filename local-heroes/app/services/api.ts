@@ -1,22 +1,29 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // Dynamically set baseURL for API
-let baseURL = 'http://127.0.0.1:3001';
+// let baseURL = 'http://127.0.0.1:3001';
+let baseURL = 'http://kochamcie.duckdns.org:3002'; // Default to production URL
 if (Platform.OS === 'android') {
-  baseURL = 'http://10.0.2.2:3001'; // Android emulator
+  // baseURL = 'http://10.0.2.2:3001'; // Android emulator
+  baseURL = 'http://kochamcie.duckdns.org:3002';
 }
 // For physical devices, use your machine's LAN IP, e.g. 'http://192.168.1.100:3001'
 
 // Create an axios instance with default configuration
 const api = axios.create({
   baseURL,
+  timeout: 10000, // 10 second timeout
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Important for handling cookies (JWT tokens)
 });
+
+// Add console logging for debugging
+console.log('API baseURL:', baseURL);
+console.log('Platform:', Platform.OS);
 
 // Add a request interceptor to add the token to requests
 api.interceptors.request.use(
@@ -41,10 +48,18 @@ export const setupResponseInterceptor = (logout: () => void) => {
   if (responseInterceptorId !== null) {
     api.interceptors.response.eject(responseInterceptorId);
   }
-
   responseInterceptorId = api.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
+      // Enhanced error logging for debugging
+      console.log('API Error:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+      });
+
       const originalRequest = error.config as AxiosRequestConfig & {
         _retry?: boolean;
       };
@@ -238,6 +253,15 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to update profile' };
     }
   },
+  // Deposit funds
+  deposit: async (amount: number) => {
+    try {
+      const response = await api.patch('/users/deposit', { amount });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to deposit funds' };
+    }
+  },
 
   // Tasks
   getTasks: async (filters: any) => {
@@ -293,12 +317,19 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to delete task' };
     }
   },
-
   applyForTask: async (id: string) => {
     try {
-      const response = await api.post(`/tasks/${id}/apply`);
+      console.log('Making apply request for task ID:', id);
+      // Send an empty body since the endpoint doesn't expect any data
+      const response = await api.patch(`/tasks/${id}/apply`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Apply for task error:', {
+        taskId: id,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to apply for task' };
     }
   },
@@ -311,21 +342,35 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to fetch applicants' };
     }
   },
-
   acceptApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.post(`/tasks/${taskId}/accept/${applicantId}`);
+      console.log('Accepting applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/accept`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Accept applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to accept applicant' };
     }
   },
-
   denyApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.post(`/tasks/${taskId}/deny/${applicantId}`);
+      console.log('Denying applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/deny`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Deny applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to deny applicant' };
     }
   },
@@ -402,13 +447,9 @@ export const authService = {
       // Check if the identifier looks like an email
       const isEmail = identifier.includes('@');
 
-      // Array of possible endpoints to try
+      // Use the new backend endpoint for email lookups
       const endpoints = isEmail
-        ? [
-            `/users/profile?email=${encodeURIComponent(identifier)}`,
-            `/users/profile/email/${encodeURIComponent(identifier)}`,
-            `/users/by-email/${encodeURIComponent(identifier)}`,
-          ]
+        ? [`/users/by-email/${encodeURIComponent(identifier)}`]
         : [`/users/profile/${identifier}`];
 
       // Try each endpoint until one succeeds

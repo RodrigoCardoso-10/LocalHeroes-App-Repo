@@ -21,11 +21,10 @@ export default function ApplyScreen() {
   const [coverLetter, setCoverLetter] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
   useEffect(() => {
     const fetchJobDetails = async () => {
       try {
-        const task = await authService.getTask(id as string);
+        const task = await authService.getTaskById(id as string);
         setJob(task);
       } catch (error) {
         Alert.alert('Error', 'Failed to load job details.');
@@ -39,16 +38,26 @@ export default function ApplyScreen() {
       fetchJobDetails();
     }
   }, [id]);
-
   const handleSubmitApplication = async () => {
     if (!job) return;
 
     setSubmitting(true);
     try {
+      console.log('Submitting application for job:', {
+        jobId: job._id,
+        jobTitle: job.title,
+        jobStatus: job.status,
+      });
       await authService.applyForTask(job._id);
       Alert.alert('Success', 'Your application has been submitted successfully.');
       router.push('/(tabs)/jobs');
     } catch (error: any) {
+      console.error('Apply submission error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        fullError: error,
+      });
       Alert.alert('Error', error.message || 'Failed to submit application.');
     } finally {
       setSubmitting(false);

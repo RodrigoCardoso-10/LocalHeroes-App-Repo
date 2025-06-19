@@ -14,7 +14,6 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useReviews } from '../context/ReviewsContext';
-import Header from '../components/Header';
 import Reviews from '../components/Reviews';
 
 export default function ProfileScreen() {
@@ -54,7 +53,6 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <Header />
 
       <ScrollView 
         style={styles.content}

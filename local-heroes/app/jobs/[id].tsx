@@ -5,25 +5,29 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  Platform,
   RefreshControl,
-  SafeAreaView,
-  ScrollView,
+  Platform,
+  Image,
   Share,
-  StyleSheet,
+  SafeAreaView,
+  View,
   Text,
   TouchableOpacity,
-  View,
+  ScrollView,
+  StyleSheet,
 } from "react-native";
-import Header from "../components/Header";
-import Colors from "../constants/Colors";
-import { useAuth } from "../context/AuthContext";
+import { MaterialIcons } from "@expo/vector-icons";
 import { authService } from "../services/api";
 import { Task } from "../types/task";
+import { useAuth } from "../context/AuthContext";
+import { useReviews } from "../context/ReviewsContext";
+import type { Review } from "../context/ReviewsContext";
+import Colors from "../constants/Colors";
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const { reviews } = useReviews();
   const [job, setJob] = useState<Task | null>(null);
   const [jobPoster, setJobPoster] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +48,7 @@ export default function JobDetailScreen() {
 
       // Add more robust error handling for task retrieval
       try {
-        const response = await authService.getTask(id as string);
+        const response = await authService.getTaskById(id as string);
         setJob(response);
 
         // Comprehensive logging of job and poster details
@@ -140,7 +144,7 @@ export default function JobDetailScreen() {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      const response = await authService.getTask(id as string);
+      const response = await authService.getTaskById(id as string);
       setJob(response);
     } catch (error: any) {
       console.error("Failed to refresh job details:", error);
@@ -194,7 +198,7 @@ export default function JobDetailScreen() {
       // Comprehensive pre-application logging
       console.log("Job Application Attempt:", {
         jobId: job._id,
-        userId: user.id,
+        userId: user._id,
         userEmail: user.email,
         userRole: user.role,
         jobTitle: job.title,
@@ -250,7 +254,7 @@ export default function JobDetailScreen() {
           status: job.status,
         },
         userDetails: {
-          id: user.id,
+          id: user._id,
           email: user.email,
           role: user.role,
         },
@@ -277,7 +281,7 @@ export default function JobDetailScreen() {
                 {
                   message: errorMessage,
                   jobId: job._id,
-                  userId: user.id,
+                  userId: user._id,
                   timestamp: new Date().toISOString(),
                 },
                 null,
@@ -425,11 +429,14 @@ export default function JobDetailScreen() {
     // Navigate using email if available, otherwise use ID
     const profileIdentifier = jobPoster.email || jobPoster._id;
     if (profileIdentifier) {
-      router.push(
-        `/profile?${jobPoster.email ? "email" : "id"}=${encodeURIComponent(
-          profileIdentifier
-        )}`
-      );
+      // Use the root profile route for viewing other users' profiles
+      const params = jobPoster.email
+        ? { email: profileIdentifier }
+        : { id: profileIdentifier };
+      router.push({
+        pathname: "/profile",
+        params,
+      });
     } else {
       Alert.alert(
         "Profile Unavailable",
@@ -469,8 +476,6 @@ export default function JobDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
-
       {/* Custom Header with Actions */}
       <View style={styles.headerActions}>
         <TouchableOpacity
@@ -600,100 +605,65 @@ export default function JobDetailScreen() {
         {/* Employer Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Posted By</Text>
-          <TouchableOpacity
-            style={styles.employerCard}
-            onPress={() => {
-              // Prioritize jobPoster details, fallback to job.postedBy
-              const posterToNavigate = jobPoster || job?.postedBy;
-
-              if (!posterToNavigate) {
-                Alert.alert(
-                  "Profile Unavailable",
-                  "Unable to retrieve poster profile at this time."
-                );
-                return;
-              }
-
-              // Prefer email for navigation, fallback to ID
-              const profileIdentifier =
-                posterToNavigate.email || posterToNavigate._id;
-              const paramKey = posterToNavigate.email ? "email" : "id";
-
-              console.log("Navigating to profile with:", {
-                identifier: profileIdentifier,
-                paramKey: paramKey,
-              });
-
-              router.push(
-                `/profile?${paramKey}=${encodeURIComponent(profileIdentifier)}`
-              );
-            }}
-          >
-            {/* Avatar */}
-            <View style={styles.employerAvatar}>
-              <Text style={styles.employerInitials}>
-                {(jobPoster?.firstName || job?.postedBy?.firstName || "")[0]}
-                {(jobPoster?.lastName || job?.postedBy?.lastName || "")[0]}
-              </Text>
-            </View>
-
-            {/* Poster Info */}
-            <View style={styles.employerInfo}>
-              <Text style={styles.employerName}>
-                {jobPoster?.firstName || job?.postedBy?.firstName || "Unknown"}{" "}
-                {jobPoster?.lastName || job?.postedBy?.lastName || ""}
-              </Text>
-              <Text style={styles.employerEmail}>
-                {jobPoster?.email ||
-                  job?.postedBy?.email ||
-                  "No email available"}
-              </Text>
-
-              {(jobPoster?.skills || job?.postedBy?.skills) && (
-                <Text style={styles.employerSkills}>
-                  Skills:{" "}
-                  {(jobPoster?.skills || job?.postedBy?.skills || []).join(
-                    ", "
-                  )}
-                </Text>
-              )}
-
-              {/* New View Profile Button */}
-              <TouchableOpacity
-                style={styles.viewProfileButton}
-                onPress={() => {
-                  // Prioritize jobPoster details, fallback to job.postedBy
-                  const posterToNavigate = jobPoster || job?.postedBy;
-
-                  if (!posterToNavigate) {
-                    Alert.alert(
-                      "Profile Unavailable",
-                      "Unable to retrieve poster profile at this time."
-                    );
-                    return;
-                  }
-
-                  // Prefer email for navigation, fallback to ID
-                  const profileIdentifier =
-                    posterToNavigate.email || posterToNavigate._id;
-                  const paramKey = posterToNavigate.email ? "email" : "id";
-
-                  console.log("Navigating to profile with:", {
-                    identifier: profileIdentifier,
-                    paramKey: paramKey,
-                  });
-
-                  router.push(
-                    `/profile?${paramKey}=${encodeURIComponent(
-                      profileIdentifier
-                    )}`
-                  );
+          {jobPoster ? (
+            <TouchableOpacity
+              style={styles.posterProfile}
+              onPress={handleViewPosterProfile}
+            >
+              <Image
+                source={{
+                  uri:
+                    jobPoster.profilePicture ||
+                    "https://randomuser.me/api/portraits/men/32.jpg",
                 }}
-              >
-                <Text style={styles.viewProfileButtonText}>View Profile</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+                style={styles.posterImage}
+              />
+              <View style={styles.posterInfo}>
+                <Text style={styles.posterName}>
+                  {jobPoster.firstName} {jobPoster.lastName}
+                </Text>
+                <View style={styles.reviewStats}>
+                  <View style={styles.ratingContainer}>
+                    {[...Array(5)].map((_, i) => {
+                      const userReviews: Review[] = reviews.filter(
+                        (r) => r.reviewedUserId === jobPoster._id
+                      );
+                      const averageRating =
+                        userReviews.length > 0
+                          ? Math.round(
+                              userReviews.reduce(
+                                (acc, review) => acc + (review.rating || 0),
+                                0
+                              ) / userReviews.length
+                            )
+                          : 0;
+                      return (
+                        <Ionicons
+                          key={i}
+                          name={i < averageRating ? "star" : "star-outline"}
+                          size={16}
+                          color="#FFD700"
+                        />
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.reviewCount}>
+                    {(() => {
+                      const userReviews: Review[] = reviews.filter(
+                        (r) => r.reviewedUserId === jobPoster._id
+                      );
+                      return `${userReviews.length} ${
+                        userReviews.length === 1 ? "review" : "reviews"
+                      }`;
+                    })()}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#666" />
+            </TouchableOpacity>
+          ) : (
+            <ActivityIndicator size="small" color="#0ca678" />
+          )}
         </View>
         {/* Job Statistics */}
         <View style={styles.section}>
@@ -702,16 +672,17 @@ export default function JobDetailScreen() {
             <View style={styles.statItem}>
               <Ionicons name="eye-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Views</Text>
-              <Text style={styles.statValue}>{(job as any).views ?? 0}</Text>
+              <Text style={styles.statValue}>{job.views ?? 0}</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Applicants</Text>
               <Text style={styles.statValue}>
-                {(job as any).applicants?.length ?? 0}
-              </Text>
-              <Text style={styles.statValue}>
-                {job.applicants?.length ?? 0}
+                {Array.isArray(job.applicants)
+                  ? job.applicants.length
+                  : typeof job.applicants === "number"
+                  ? job.applicants
+                  : 0}
               </Text>
             </View>
             <View style={styles.statItem}>
@@ -861,8 +832,7 @@ export default function JobDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-
-    backgroundColor: "#fff",
+    backgroundColor: "#000",
   },
   loadingContainer: {
     flex: 1,
@@ -892,33 +862,21 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  customHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
-  },
-  headerButton: {
-    padding: 8,
-  },
   headerActions: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     backgroundColor: "#000",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   headerActionRight: {
     flexDirection: "row",
-    alignItems: "center",
+    gap: 16,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: "#f5f5f5",
   },
   jobHeader: {
     backgroundColor: "white",
@@ -1161,10 +1119,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   shareButton: {
-    marginRight: 16,
+    padding: 8,
   },
   editButton: {
-    marginLeft: 16,
+    padding: 8,
   },
   errorButtonText: {
     color: "#DC3545",
@@ -1181,34 +1139,37 @@ const styles = StyleSheet.create({
   posterProfile: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    padding: 12,
   },
-  posterAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
-  },
-  posterAvatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.light.tint,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  posterAvatarText: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "bold",
+  posterImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
   },
   posterInfo: {
     flex: 1,
   },
   posterName: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  reviewStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: "#666",
   },
   viewProfileButton: {
     backgroundColor: "#2A9D8F",

@@ -20,10 +20,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
-      ]
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "INTERNET", "ACCESS_NETWORK_STATE"],
+      "package": "com.gramostv.localheroes",
+      "usesCleartextTraffic": true,
+      "networkSecurityConfig": "./network_security_config.xml",
+      "compileSdkVersion": 34,
+      "targetSdkVersion": 28
     },
     "web": {
       "bundler": "metro",
@@ -41,10 +43,24 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ca63070d-6626-4f74-9675-06660423a0d3"
+      }
     }
   }
 }

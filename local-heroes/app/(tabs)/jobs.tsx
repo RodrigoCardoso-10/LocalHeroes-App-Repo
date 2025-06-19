@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
-import { router } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import Slider from "@react-native-community/slider";
+import { router } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,20 +15,23 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { WebView } from 'react-native-webview';
-import Header from '../components/Header';
-import { useAuth } from '../context/AuthContext';
-import { authService } from '../services/api';
-import { Task, TaskFilters, TasksResponse } from '../types/task';
+} from "react-native";
+import { WebView } from "react-native-webview";
+import Header from "../components/Header";
+import { useAuth } from "../context/AuthContext";
+import { authService } from "../services/api";
+import { Task, TaskFilters } from "../types/task";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 // Dutch cities with approximate coordinates
-const DUTCH_CITIES_COORDS: Record<string, { latitude: number; longitude: number }> = {
+const DUTCH_CITIES_COORDS: Record<
+  string,
+  { latitude: number; longitude: number }
+> = {
   Amsterdam: { latitude: 52.3676, longitude: 4.9041 },
   Rotterdam: { latitude: 51.9225, longitude: 4.47917 },
-  'The Hague': { latitude: 52.0705, longitude: 4.3007 },
+  "The Hague": { latitude: 52.0705, longitude: 4.3007 },
   Utrecht: { latitude: 52.0907, longitude: 5.1214 },
   Eindhoven: { latitude: 51.4416, longitude: 5.4697 },
   Groningen: { latitude: 53.2194, longitude: 6.5665 },
@@ -73,19 +76,19 @@ const CustomCheckbox = ({
 
 export default function JobsScreen() {
   // View mode state
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   // Existing states
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [showFilters, setShowFilters] = useState(true);
   const [showCities, setShowCities] = useState(false);
   const [paymentRange, setPaymentRange] = useState([0, 999]);
-  const [selectedLocation, setSelectedLocation] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
   const [selectedDatePosted, setSelectedDatePosted] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [sortOption, setSortOption] = useState('latest');
+  const [sortOption, setSortOption] = useState("latest");
   const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [scrollPosition, setScrollPosition] = useState(0); // Backend integration state
@@ -106,57 +109,81 @@ export default function JobsScreen() {
   const isMountedRef = useRef(true);
 
   // Map-related states and refs
-  const [jobsWithCoordinates, setJobsWithCoordinates] = useState<JobMarker[]>([]);
+  const [jobsWithCoordinates, setJobsWithCoordinates] = useState<JobMarker[]>(
+    []
+  );
   const webViewRef = useRef<WebView>(null);
 
   // Dutch cities list
   const dutchCities = [
-    'Amsterdam',
-    'Rotterdam',
-    'The Hague',
-    'Utrecht',
-    'Eindhoven',
-    'Groningen',
-    'Tilburg',
-    'Almere',
-    'Breda',
-    'Nijmegen',
-    'Enschede',
+    "Amsterdam",
+    "Rotterdam",
+    "The Hague",
+    "Utrecht",
+    "Eindhoven",
+    "Groningen",
+    "Tilburg",
+    "Almere",
+    "Breda",
+    "Nijmegen",
+    "Enschede",
   ];
   // Dynamic filter arrays based on loaded counts
   const categories = [
-    { name: 'Gardening', count: filterCounts.categories['Gardening'] || 0 },
-    { name: 'Cleaning', count: filterCounts.categories['Cleaning'] || 0 },
-    { name: 'Moving', count: filterCounts.categories['Moving'] || 0 },
-    { name: 'Pet Care', count: filterCounts.categories['Pet Care'] || 0 },
-    { name: 'Electrical', count: filterCounts.categories['Electrical'] || 0 },
-    { name: 'Assembly', count: filterCounts.categories['Assembly'] || 0 },
-    { name: 'Technology', count: filterCounts.categories['Technology'] || 0 },
-    { name: 'Shopping', count: filterCounts.categories['Shopping'] || 0 },
-    { name: 'Painting', count: filterCounts.categories['Painting'] || 0 },
-    { name: 'Plumbing', count: filterCounts.categories['Plumbing'] || 0 },
-    { name: 'Events', count: filterCounts.categories['Events'] || 0 },
-    { name: 'Repair', count: filterCounts.categories['Repair'] || 0 },
-    { name: 'Education', count: filterCounts.categories['Education'] || 0 },
+    { name: "Gardening", count: filterCounts.categories["Gardening"] || 0 },
+    { name: "Cleaning", count: filterCounts.categories["Cleaning"] || 0 },
+    { name: "Moving", count: filterCounts.categories["Moving"] || 0 },
+    { name: "Pet Care", count: filterCounts.categories["Pet Care"] || 0 },
+    { name: "Electrical", count: filterCounts.categories["Electrical"] || 0 },
+    { name: "Assembly", count: filterCounts.categories["Assembly"] || 0 },
+    { name: "Technology", count: filterCounts.categories["Technology"] || 0 },
+    { name: "Shopping", count: filterCounts.categories["Shopping"] || 0 },
+    { name: "Painting", count: filterCounts.categories["Painting"] || 0 },
+    { name: "Plumbing", count: filterCounts.categories["Plumbing"] || 0 },
+    { name: "Events", count: filterCounts.categories["Events"] || 0 },
+    { name: "Repair", count: filterCounts.categories["Repair"] || 0 },
+    { name: "Education", count: filterCounts.categories["Education"] || 0 },
   ].filter((cat) => cat.count > 0); // Only show categories with jobs
   const experienceLevels = [
-    { name: 'No experience', count: filterCounts.experienceLevels['No experience'] || 0 },
-    { name: 'Beginner', count: filterCounts.experienceLevels['Beginner'] || 0 },
-    { name: 'Intermediate', count: filterCounts.experienceLevels['Intermediate'] || 0 },
-    { name: 'Expert', count: filterCounts.experienceLevels['Expert'] || 0 },
+    {
+      name: "No experience",
+      count: filterCounts.experienceLevels["No experience"] || 0,
+    },
+    { name: "Beginner", count: filterCounts.experienceLevels["Beginner"] || 0 },
+    {
+      name: "Intermediate",
+      count: filterCounts.experienceLevels["Intermediate"] || 0,
+    },
+    { name: "Expert", count: filterCounts.experienceLevels["Expert"] || 0 },
   ].filter((exp) => exp.count > 0); // Only show levels with jobs
   const datePostedOptions = [
-    { name: 'All', count: filterCounts.datePosted['All'] || 0 },
-    { name: 'Last 24 Hours', count: filterCounts.datePosted['Last 24 Hours'] || 0 },
-    { name: 'Last 7 Days', count: filterCounts.datePosted['Last 7 Days'] || 0 },
-    { name: 'Last 30 Days', count: filterCounts.datePosted['Last 30 Days'] || 0 },
+    { name: "All", count: filterCounts.datePosted["All"] || 0 },
+    {
+      name: "Last 24 Hours",
+      count: filterCounts.datePosted["Last 24 Hours"] || 0,
+    },
+    { name: "Last 7 Days", count: filterCounts.datePosted["Last 7 Days"] || 0 },
+    {
+      name: "Last 30 Days",
+      count: filterCounts.datePosted["Last 30 Days"] || 0,
+    },
   ];
 
-  const tags = ['engineering', 'design', 'marketing', 'ui/ux', 'management', 'software', 'construction'];
+  const tags = [
+    "engineering",
+    "design",
+    "marketing",
+    "ui/ux",
+    "management",
+    "software",
+    "construction",
+  ];
 
   const toggleCategory = (category: string): void => {
     if (selectedCategories.includes(category)) {
-      setSelectedCategories(selectedCategories.filter((item) => item !== category));
+      setSelectedCategories(
+        selectedCategories.filter((item) => item !== category)
+      );
     } else {
       setSelectedCategories([...selectedCategories, category]);
     }
@@ -164,7 +191,9 @@ export default function JobsScreen() {
 
   const toggleExperience = (experience: string): void => {
     if (selectedExperience.includes(experience)) {
-      setSelectedExperience(selectedExperience.filter((item) => item !== experience));
+      setSelectedExperience(
+        selectedExperience.filter((item) => item !== experience)
+      );
     } else {
       setSelectedExperience([...selectedExperience, experience]);
     }
@@ -186,9 +215,14 @@ export default function JobsScreen() {
   };
 
   // Map-related functions
-  const getCoordinatesForLocation = (task: Task): { latitude: number; longitude: number } | null => {
+  const getCoordinatesForLocation = (
+    task: Task
+  ): { latitude: number; longitude: number } | null => {
     const location = task.location as { point?: { coordinates: number[] } };
-    if (location?.point?.coordinates && location.point.coordinates.length === 2) {
+    if (
+      location?.point?.coordinates &&
+      location.point.coordinates.length === 2
+    ) {
       return {
         latitude: location.point.coordinates[1],
         longitude: location.point.coordinates[0],
@@ -206,68 +240,70 @@ export default function JobsScreen() {
 
   const getMarkerColor = (category?: string) => {
     switch (category?.toLowerCase()) {
-      case 'gardening':
-        return '#2E8B57';
-      case 'cleaning':
-        return '#4169E1';
-      case 'moving':
-        return '#FF6347';
-      case 'pet care':
-        return '#9370DB';
-      case 'electrical':
-        return '#FFD700';
-      case 'plumbing':
-        return '#00CED1';
-      case 'technology':
-        return '#FF1493';
+      case "gardening":
+        return "#2E8B57";
+      case "cleaning":
+        return "#4169E1";
+      case "moving":
+        return "#FF6347";
+      case "pet care":
+        return "#9370DB";
+      case "electrical":
+        return "#FFD700";
+      case "plumbing":
+        return "#00CED1";
+      case "technology":
+        return "#FF1493";
       default:
-        return '#2A9D8F';
+        return "#2A9D8F";
     }
   };
 
   const getCategoryIcon = (category?: string) => {
     switch (category?.toLowerCase()) {
-      case 'gardening':
-        return '🌱';
-      case 'cleaning':
-        return '🧹';
-      case 'moving':
-        return '📦';
-      case 'pet care':
-        return '🐕';
-      case 'electrical':
-        return '⚡';
-      case 'plumbing':
-        return '🔧';
-      case 'technology':
-        return '💻';
-      case 'assembly':
-        return '🔨';
-      case 'painting':
-        return '🎨';
-      case 'repair':
-        return '🛠️';
+      case "gardening":
+        return "🌱";
+      case "cleaning":
+        return "🧹";
+      case "moving":
+        return "📦";
+      case "pet care":
+        return "🐕";
+      case "electrical":
+        return "⚡";
+      case "plumbing":
+        return "🔧";
+      case "technology":
+        return "💻";
+      case "assembly":
+        return "🔨";
+      case "painting":
+        return "🎨";
+      case "repair":
+        return "🛠️";
       default:
-        return '💼';
+        return "💼";
     }
   };
 
   const getLocationAddress = (location: any): string => {
     if (!location) {
-      return 'Unknown Location';
+      return "Unknown Location";
     }
-    if (typeof location === 'string') {
+    if (typeof location === "string") {
       return location;
     }
-    if (typeof location === 'object') {
+    if (typeof location === "object") {
       if (location.address) {
         return location.address;
       }
       if (location.point?.coordinates) {
-        return `${location.point.coordinates[1].toFixed(4)}, ${location.point.coordinates[0].toFixed(4)}`;
+        return `${location.point.coordinates[1].toFixed(
+          4
+        )}, ${location.point.coordinates[0].toFixed(4)}`;
       }
     }
-    return 'Unknown Location';
+    return "Unknown Location";
   };
 
   const generateMapHTML = () => {
@@ -278,7 +314,7 @@ export default function JobsScreen() {
       title: job.title,
       location: getLocationAddress(job.location),
       price: job.price,
-      category: job.category || 'General',
+      category: job.category || "General",
       color: getMarkerColor(job.category),
       icon: getCategoryIcon(job.category),
     }));
@@ -355,19 +391,19 @@ export default function JobsScreen() {
   const handleWebViewMessage = (event: any) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
-      console.log('WebView message received:', message);
-      if (message.type === 'viewJob') {
-        console.log('Navigating to job ID:', message.jobId);
+      console.log("WebView message received:", message);
+      if (message.type === "viewJob") {
+        console.log("Navigating to job ID:", message.jobId);
         router.push(`/jobs/${message.jobId}`);
       }
     } catch (error) {
-      console.error('Failed to parse WebView message:', error);
+      console.error("Failed to parse WebView message:", error);
     }
   };
 
   const focusOnNetherlands = () => {
     if (webViewRef.current) {
-      webViewRef.current.postMessage('recenter');
+      webViewRef.current.postMessage("recenter");
     }
   };
 
@@ -378,8 +414,8 @@ export default function JobsScreen() {
   };
   // Clear all filters
   const clearAllFilters = () => {
-    setSearchText('');
-    setSelectedLocation('');
+    setSearchText("");
+    setSelectedLocation("");
     setSelectedCategories([]);
     setSelectedExperience([]);
     setSelectedDatePosted([]);
@@ -396,7 +432,7 @@ export default function JobsScreen() {
         loadFilterCounts(), // Also refresh filter counts
       ]);
     } catch (error) {
-      console.error('Refresh failed:', error);
+      console.error("Refresh failed:", error);
     } finally {
       if (isMountedRef.current) {
         setRefreshing(false);
@@ -407,14 +443,13 @@ export default function JobsScreen() {
   const loadTasks = async (page: number = 1, resetResults: boolean = false) => {
     if (loading) return; // Prevent multiple simultaneous loads
     setLoading(true);
-
     const filters: TaskFilters = {
       search: searchText,
       minPrice: paymentRange[0],
       maxPrice: paymentRange[1],
-      category: selectedCategories.join(','),
-      experienceLevel: selectedExperience.join(','),
-      datePosted: selectedDatePosted.join(','),
+      category: selectedCategories.join(","),
+      experienceLevel: selectedExperience.join(","),
+      datePosted: selectedDatePosted.join(","),
       tags: selectedTags,
       sortBy: sortOption,
       page,
@@ -423,6 +458,7 @@ export default function JobsScreen() {
 
     try {
       const response = await authService.getTasks(filters);
+      console.log("Jobs API response:", response, "With filters:", filters);
 
       if (!isMountedRef.current) return;
 
@@ -430,15 +466,13 @@ export default function JobsScreen() {
         setTasks(response.tasks);
       } else {
         setTasks((prev) => [...prev, ...response.tasks]);
-      }
-
-      // Also create jobs with coordinates for map view
+      } // Also create jobs with coordinates for map view
       const jobMarkers = response.tasks
-        .map((job) => ({
+        .map((job: Task) => ({
           ...job,
           coordinate: getCoordinatesForLocation(job),
         }))
-        .filter((job): job is JobMarker => job.coordinate !== null);
+        .filter((job: JobMarker): job is JobMarker => job.coordinate !== null);
 
       if (resetResults || page === 1) {
         setJobsWithCoordinates(jobMarkers);
@@ -450,9 +484,9 @@ export default function JobsScreen() {
       setCurrentPage(response.page);
       setTotalPages(response.totalPages);
     } catch (error: any) {
-      console.error('Failed to load tasks:', error);
+      console.error("Failed to load tasks:", error);
       if (isMountedRef.current) {
-        Alert.alert('Error', error.message || 'Failed to load jobs');
+        Alert.alert("Error", error.message || "Failed to load jobs");
       }
     } finally {
       if (isMountedRef.current) {
@@ -475,7 +509,7 @@ export default function JobsScreen() {
         datePosted: response.datePosted || {},
       });
     } catch (error) {
-      console.error('Failed to load filter counts:', error);
+      console.error("Failed to load filter counts:", error);
       // Set default counts on error
       if (isMountedRef.current) {
         setFilterCounts({
@@ -524,39 +558,39 @@ export default function JobsScreen() {
 
   // Sort options
   const sortOptions = [
-    { label: 'Sort by Latest', value: 'latest' },
-    { label: 'Price: Low to High', value: 'price-asc' },
-    { label: 'Price: High to Low', value: 'price-desc' },
+    { label: "Sort by Latest", value: "latest" },
+    { label: "Price: Low to High", value: "price-asc" },
+    { label: "Price: High to Low", value: "price-desc" },
   ];
 
   // Helper functions for status styling
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
-      case 'OPEN':
-        return { backgroundColor: '#E8F5E8' };
-      case 'IN_PROGRESS':
-        return { backgroundColor: '#FFF3CD' };
-      case 'COMPLETED':
-        return { backgroundColor: '#D1ECF1' };
-      case 'CANCELLED':
-        return { backgroundColor: '#F8D7DA' };
+      case "OPEN":
+        return { backgroundColor: "#E8F5E8" };
+      case "IN_PROGRESS":
+        return { backgroundColor: "#FFF3CD" };
+      case "COMPLETED":
+        return { backgroundColor: "#D1ECF1" };
+      case "CANCELLED":
+        return { backgroundColor: "#F8D7DA" };
       default:
-        return { backgroundColor: '#E9ECEF' };
+        return { backgroundColor: "#E9ECEF" };
     }
   };
 
   const getStatusTextStyle = (status: string) => {
     switch (status) {
-      case 'OPEN':
-        return { color: '#155724' };
-      case 'IN_PROGRESS':
-        return { color: '#856404' };
-      case 'COMPLETED':
-        return { color: '#0C5460' };
-      case 'CANCELLED':
-        return { color: '#721C24' };
+      case "OPEN":
+        return { color: "#155724" };
+      case "IN_PROGRESS":
+        return { color: "#856404" };
+      case "COMPLETED":
+        return { color: "#0C5460" };
+      case "CANCELLED":
+        return { color: "#721C24" };
       default:
-        return { color: '#495057' };
+        return { color: "#495057" };
     }
   };
 
@@ -575,12 +609,18 @@ export default function JobsScreen() {
       params: { id: job._id },
     });
   };
-
   const handleApply = async (jobId: string) => {
     try {
+      console.log('Applying for job with ID:', jobId);
       await authService.applyForTask(jobId);
-      Alert.alert('Success', 'You have successfully applied for the job.');
+      Alert.alert("Success", "You have successfully applied for the job.");
     } catch (error: any) {
+      console.error('Apply error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        fullError: error,
+      });
       Alert.alert('Error', error.message || 'Failed to apply for the job.');
     }
   };
@@ -591,44 +631,89 @@ export default function JobsScreen() {
       {/* View Toggle */}
       <View style={styles.viewToggleContainer}>
         <TouchableOpacity
-          style={[styles.viewToggleButton, viewMode === 'list' && styles.activeViewToggle]}
-          onPress={() => setViewMode('list')}
+          style={[
+            styles.viewToggleButton,
+            viewMode === "list" && styles.activeViewToggle,
+          ]}
+          onPress={() => setViewMode("list")}
         >
-          <Ionicons name="list" size={20} color={viewMode === 'list' ? '#fff' : '#2A9D8F'} />
-          <Text style={[styles.viewToggleText, viewMode === 'list' && styles.activeViewToggleText]}>List</Text>
+          <Ionicons
+            name="list"
+            size={20}
+            color={viewMode === "list" ? "#fff" : "#2A9D8F"}
+          />
+          <Text
+            style={[
+              styles.viewToggleText,
+              viewMode === "list" && styles.activeViewToggleText,
+            ]}
+          >
+            List
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.viewToggleButton, viewMode === 'map' && styles.activeViewToggle]}
-          onPress={() => setViewMode('map')}
+          style={[
+            styles.viewToggleButton,
+            viewMode === "map" && styles.activeViewToggle,
+          ]}
+          onPress={() => setViewMode("map")}
         >
-          <Ionicons name="map" size={20} color={viewMode === 'map' ? '#fff' : '#2A9D8F'} />
-          <Text style={[styles.viewToggleText, viewMode === 'map' && styles.activeViewToggleText]}>Map</Text>
+          <Ionicons
+            name="map"
+            size={20}
+            color={viewMode === "map" ? "#fff" : "#2A9D8F"}
+          />
+          <Text
+            style={[
+              styles.viewToggleText,
+              viewMode === "map" && styles.activeViewToggleText,
+            ]}
+          >
+            Map
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {viewMode === 'list' ? (
+      {viewMode === "list" ? (
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           {/* List View */}
           <View style={styles.scrollView}>
             {/* Top Buttons Row */}
             <View style={styles.topButtonsRow}>
               {/* Filters Button */}
-              <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(!showFilters)}>
-                <Text style={styles.filtersButtonText}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
-                <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={16} color="#2A9D8F" />
+              <TouchableOpacity
+                style={styles.filtersButton}
+                onPress={() => setShowFilters(!showFilters)}
+              >
+                <Text style={styles.filtersButtonText}>
+                  {showFilters ? "Hide Filters" : "Show Filters"}
+                </Text>
+                <Ionicons
+                  name={showFilters ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color="#2A9D8F"
+                />
               </TouchableOpacity>
               {/* Clear Filters Button */}
-              <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
+              <TouchableOpacity
+                style={styles.clearFiltersButton}
+                onPress={clearAllFilters}
+              >
                 <Ionicons name="trash-outline" size={16} color="#666" />
                 <Text style={styles.clearFiltersButtonText}>Clear</Text>
               </TouchableOpacity>
               {/* Post Job Button */}
-              <TouchableOpacity style={styles.postJobButton} onPress={() => router.push('/post-job')}>
+              <TouchableOpacity
+                style={styles.postJobButton}
+                onPress={() => router.push("/post-job")}
+              >
                 <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
                 <Text style={styles.postJobButtonText}>Post a Job</Text>
               </TouchableOpacity>
@@ -659,9 +744,11 @@ export default function JobsScreen() {
                     }}
                   >
                     <Ionicons name="location-outline" size={16} color="#999" />
-                    <Text style={styles.locationText}>{selectedLocation ? selectedLocation : 'Choose city'}</Text>
+                    <Text style={styles.locationText}>
+                      {selectedLocation ? selectedLocation : "Choose city"}
+                    </Text>
                     <Ionicons
-                      name={showCities ? 'chevron-up' : 'chevron-down'}
+                      name={showCities ? "chevron-up" : "chevron-down"}
                       size={16}
                       color="#999"
                       style={styles.chevron}
@@ -683,12 +770,19 @@ export default function JobsScreen() {
                       <View style={styles.modalContainer}>
                         <View style={styles.citiesDropdownContainer}>
                           <View style={styles.citiesDropdownHeader}>
-                            <Text style={styles.citiesDropdownTitle}>Select a city</Text>
-                            <TouchableOpacity onPress={() => setShowCities(false)}>
+                            <Text style={styles.citiesDropdownTitle}>
+                              Select a city
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => setShowCities(false)}
+                            >
                               <Ionicons name="close" size={24} color="#333" />
                             </TouchableOpacity>
                           </View>
-                          <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
+                          <ScrollView
+                            style={styles.citiesDropdown}
+                            showsVerticalScrollIndicator={true}
+                          >
                             {dutchCities.map((city, index) => (
                               <TouchableOpacity
                                 key={index}
@@ -698,10 +792,22 @@ export default function JobsScreen() {
                                   setShowCities(false);
                                 }}
                               >
-                                <Text style={[styles.cityText, selectedLocation === city && styles.selectedCityText]}>
+                                <Text
+                                  style={[
+                                    styles.cityText,
+                                    selectedLocation === city &&
+                                      styles.selectedCityText,
+                                  ]}
+                                >
                                   {city}
                                 </Text>
-                                {selectedLocation === city && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
+                                {selectedLocation === city && (
+                                  <Ionicons
+                                    name="checkmark"
+                                    size={16}
+                                    color="#2A9D8F"
+                                  />
+                                )}
                               </TouchableOpacity>
                             ))}
                           </ScrollView>
@@ -765,14 +871,18 @@ export default function JobsScreen() {
                       minimumValue={0}
                       maximumValue={999}
                       value={paymentRange[1]}
-                      onValueChange={(value: number) => setPaymentRange([0, Math.round(value)])}
+                      onValueChange={(value: number) =>
+                        setPaymentRange([0, Math.round(value)])
+                      }
                       minimumTrackTintColor="#2A9D8F"
                       maximumTrackTintColor="#E9ECEF"
                       thumbTintColor="#2A9D8F"
                     />
                   </View>
                   <View style={styles.paymentRangeTextContainer}>
-                    <Text style={styles.paymentRangeText}>Payment: 0€ - {paymentRange[1]}€</Text>
+                    <Text style={styles.paymentRangeText}>
+                      Payment: 0€ - {paymentRange[1]}€
+                    </Text>
                     <TouchableOpacity style={styles.applyButton}>
                       <Text style={styles.applyButtonText}>Apply</Text>
                     </TouchableOpacity>
@@ -786,10 +896,20 @@ export default function JobsScreen() {
                     {tags.map((tag, index) => (
                       <TouchableOpacity
                         key={index}
-                        style={[styles.tagButton, selectedTags.includes(tag) && styles.tagButtonSelected]}
+                        style={[
+                          styles.tagButton,
+                          selectedTags.includes(tag) &&
+                            styles.tagButtonSelected,
+                        ]}
                         onPress={() => toggleTag(tag)}
                       >
-                        <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextSelected]}>
+                        <Text
+                          style={[
+                            styles.tagText,
+                            selectedTags.includes(tag) &&
+                              styles.tagTextSelected,
+                          ]}
+                        >
                           {tag}
                         </Text>
                       </TouchableOpacity>
@@ -802,12 +922,19 @@ export default function JobsScreen() {
             <View style={styles.resultsContainer}>
               <Text style={styles.resultsText}>
                 {loading
-                  ? 'Loading...'
-                  : `Showing 1-${Math.min(tasks.length, totalResults)} of ${totalResults} results`}
+                  ? "Loading..."
+                  : `Showing 1-${Math.min(
+                      tasks.length,
+                      totalResults
+                    )} of ${totalResults} results`}
               </Text>
-              <TouchableOpacity style={styles.sortButton} onPress={() => setIsSortModalVisible(true)}>
+              <TouchableOpacity
+                style={styles.sortButton}
+                onPress={() => setIsSortModalVisible(true)}
+              >
                 <Text style={styles.sortButtonText}>
-                  {sortOptions.find((o) => o.value === sortOption)?.label || 'Sort by'}
+                  {sortOptions.find((o) => o.value === sortOption)?.label ||
+                    "Sort by"}
                 </Text>
                 <Ionicons name="chevron-down" size={16} color="#333" />
               </TouchableOpacity>
@@ -828,11 +955,16 @@ export default function JobsScreen() {
                   <View style={styles.citiesDropdownContainer}>
                     <View style={styles.citiesDropdownHeader}>
                       <Text style={styles.citiesDropdownTitle}>Sort by</Text>
-                      <TouchableOpacity onPress={() => setIsSortModalVisible(false)}>
+                      <TouchableOpacity
+                        onPress={() => setIsSortModalVisible(false)}
+                      >
                         <Ionicons name="close" size={24} color="#333" />
                       </TouchableOpacity>
                     </View>
-                    <ScrollView style={styles.citiesDropdown} showsVerticalScrollIndicator={true}>
+                    <ScrollView
+                      style={styles.citiesDropdown}
+                      showsVerticalScrollIndicator={true}
+                    >
                       {sortOptions.map((option, index) => (
                         <TouchableOpacity
                           key={index}
@@ -842,10 +974,22 @@ export default function JobsScreen() {
                             setIsSortModalVisible(false);
                           }}
                         >
-                          <Text style={[styles.cityText, sortOption === option.value && styles.selectedCityText]}>
+                          <Text
+                            style={[
+                              styles.cityText,
+                              sortOption === option.value &&
+                                styles.selectedCityText,
+                            ]}
+                          >
                             {option.label}
                           </Text>
-                          {sortOption === option.value && <Ionicons name="checkmark" size={16} color="#2A9D8F" />}
+                          {sortOption === option.value && (
+                            <Ionicons
+                              name="checkmark"
+                              size={16}
+                              color="#2A9D8F"
+                            />
+                          )}
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -863,12 +1007,18 @@ export default function JobsScreen() {
               <View style={styles.emptyContainer}>
                 <Ionicons name="briefcase-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyTitle}>No jobs found</Text>
-                <Text style={styles.emptySubtitle}>Try adjusting your filters or search criteria</Text>
+                <Text style={styles.emptySubtitle}>
+                  Try adjusting your filters or search criteria
+                </Text>
               </View>
             ) : (
               <View style={styles.tasksContainer}>
                 {tasks.map((task) => (
-                  <TouchableOpacity key={task._id} style={styles.taskCard} onPress={() => onListJobPress(task)}>
+                  <TouchableOpacity
+                    key={task._id}
+                    style={styles.taskCard}
+                    onPress={() => onListJobPress(task)}
+                  >
                     <View style={styles.taskHeader}>
                       <Text style={styles.taskTitle}>{task.title}</Text>
                       <Text style={styles.taskPrice}>€{task.price}</Text>
@@ -879,30 +1029,54 @@ export default function JobsScreen() {
                     <View style={styles.taskMeta}>
                       {task.location && (
                         <View style={styles.taskMetaItem}>
-                          <Ionicons name="location-outline" size={14} color="#666" />
-                          <Text style={styles.taskMetaText}>{getLocationAddress(task.location)}</Text>
+                          <Ionicons
+                            name="location-outline"
+                            size={14}
+                            color="#666"
+                          />
+                          <Text style={styles.taskMetaText}>
+                            {getLocationAddress(task.location)}
+                          </Text>
                         </View>
                       )}
                       {task.category && (
                         <View style={styles.taskMetaItem}>
-                          <Ionicons name="pricetag-outline" size={14} color="#666" />
-                          <Text style={styles.taskMetaText}>{task.category}</Text>
+                          <Ionicons
+                            name="pricetag-outline"
+                            size={14}
+                            color="#666"
+                          />
+                          <Text style={styles.taskMetaText}>
+                            {task.category}
+                          </Text>
                         </View>
                       )}
                     </View>
                     <View style={styles.taskFooter}>
                       <View style={styles.taskPoster}>
                         <View style={styles.posterAvatar}>
-                          <Text style={styles.posterInitial}>{task.postedBy.firstName?.charAt(0) || 'U'}</Text>
+                          <Text style={styles.posterInitial}>
+                            {task.postedBy.firstName?.charAt(0) || "U"}
+                          </Text>
                         </View>
                         <Text style={styles.posterName}>
                           {task.postedBy.firstName} {task.postedBy.lastName}
                         </Text>
                       </View>
 
-                      <View style={[styles.statusBadge, getStatusBadgeStyle(task.status)]}>
-                        <Text style={[styles.statusText, getStatusTextStyle(task.status)]}>
-                          {task.status.replace('_', ' ')}
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          getStatusBadgeStyle(task.status),
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusText,
+                            getStatusTextStyle(task.status),
+                          ]}
+                        >
+                          {task.status.replace("_", " ")}
                         </Text>
                       </View>
                     </View>
@@ -913,7 +1087,11 @@ export default function JobsScreen() {
                             <Text style={styles.taskTagText}>{tag}</Text>
                           </View>
                         ))}
-                        {task.tags.length > 3 && <Text style={styles.moreTagsText}>+{task.tags.length - 3}</Text>}
+                        {task.tags.length > 3 && (
+                          <Text style={styles.moreTagsText}>
+                            +{task.tags.length - 3}
+                          </Text>
+                        )}
                       </View>
                     )}
                     {/* Apply Now Button */}
@@ -963,24 +1141,35 @@ export default function JobsScreen() {
               </View>
             )}
             onError={(error) => {
-              console.error('WebView error:', error);
-              Alert.alert('Map Error', 'Failed to load the map. Please try the list view.');
+              console.error("WebView error:", error);
+              Alert.alert(
+                "Map Error",
+                "Failed to load the map. Please try the list view."
+              );
             }}
           />
           {/* Map Controls */}
           <View style={styles.mapControls}>
-            <TouchableOpacity style={styles.mapControlButton} onPress={focusOnNetherlands}>
+            <TouchableOpacity
+              style={styles.mapControlButton}
+              onPress={focusOnNetherlands}
+            >
               <Ionicons name="locate" size={24} color="#2A9D8F" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.mapControlButton} onPress={onRefresh}>
+            <TouchableOpacity
+              style={styles.mapControlButton}
+              onPress={onRefresh}
+            >
               <Ionicons name="refresh" size={24} color="#2A9D8F" />
             </TouchableOpacity>
           </View>
           {/* Job Statistics */}
           <View style={styles.mapStatsContainer}>
             <View style={styles.mapStatItem}>
-              <Text style={styles.mapStatNumber}>{jobsWithCoordinates.length}</Text>
+              <Text style={styles.mapStatNumber}>
+                {jobsWithCoordinates.length}
+              </Text>
               <Text style={styles.mapStatLabel}>Jobs Found</Text>
             </View>
           </View>
@@ -993,7 +1182,7 @@ export default function JobsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   content: {
     flex: 1,
@@ -1013,105 +1202,105 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   topButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginVertical: 16,
   },
   filtersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F7F6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F7F6",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     marginRight: 10,
   },
   clearFiltersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
     marginRight: 10,
   },
   refreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F7F6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F7F6",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
     marginRight: 10,
   },
   postJobButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2A9D8F',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2A9D8F",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
   filtersButtonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#2A9D8F',
+    fontWeight: "500",
+    color: "#2A9D8F",
     marginRight: 8,
   },
   clearFiltersButtonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    fontWeight: "500",
+    color: "#666",
     marginLeft: 8,
   },
   refreshButtonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#2A9D8F',
+    fontWeight: "500",
+    color: "#2A9D8F",
     marginLeft: 8,
   },
   postJobButtonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#FFFFFF',
+    fontWeight: "500",
+    color: "#FFFFFF",
     marginLeft: 8,
   },
   searchSection: {
     marginBottom: 16,
-    backgroundColor: '#F1F7F6',
+    backgroundColor: "#F1F7F6",
     padding: 16,
     borderRadius: 8,
   },
   filterSection: {
     marginBottom: 16,
-    backgroundColor: '#F1F7F6',
+    backgroundColor: "#F1F7F6",
     padding: 16,
     borderRadius: 8,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 12,
-    color: '#333',
+    color: "#333",
   },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     paddingHorizontal: 12,
   },
   searchInput: {
     flex: 1,
     height: 40,
-    color: '#333',
+    color: "#333",
   },
   locationSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1119,14 +1308,14 @@ const styles = StyleSheet.create({
   locationText: {
     flex: 1,
     marginLeft: 8,
-    color: '#999',
+    color: "#999",
   },
   chevron: {
     marginLeft: 8,
   },
   checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
   },
   checkboxContainer: {
@@ -1137,68 +1326,68 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#2A9D8F',
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#2A9D8F",
+    backgroundColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: "#2A9D8F",
   },
   checkboxLabel: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   countBadge: {
     fontSize: 14,
-    color: '#999',
+    color: "#999",
   },
   showMoreButton: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: "#2A9D8F",
     borderRadius: 8,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   showMoreText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   sliderContainer: {
     marginVertical: 12,
   },
   slider: {
-    width: '100%',
+    width: "100%",
     height: 40,
   },
   paymentRangeTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   paymentRangeText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   applyButton: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: "#2A9D8F",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 4,
   },
   applyButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginTop: 8,
   },
   tagButton: {
-    backgroundColor: '#E9ECEF',
+    backgroundColor: "#E9ECEF",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
@@ -1206,199 +1395,199 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tagButtonSelected: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: "#2A9D8F",
   },
   tagText: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   tagTextSelected: {
-    color: 'white',
+    color: "white",
   },
   resultsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginVertical: 16,
   },
   resultsText: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F7F6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F7F6",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 4,
   },
   sortButtonText: {
     fontSize: 12,
-    color: '#333',
+    color: "#333",
     marginRight: 4,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContainer: {
-    width: '80%',
-    backgroundColor: 'transparent',
+    width: "80%",
+    backgroundColor: "transparent",
   },
   citiesDropdownContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   citiesDropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F7F6',
+    borderBottomColor: "#F1F7F6",
   },
   citiesDropdownTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   citiesDropdown: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     padding: 8,
     maxHeight: 300,
   },
   cityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F7F6',
+    borderBottomColor: "#F1F7F6",
   },
   cityText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   selectedCityText: {
-    color: '#2A9D8F',
-    fontWeight: '600',
+    color: "#2A9D8F",
+    fontWeight: "600",
   },
   // New styles for task cards and loading states
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 50,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 50,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   tasksContainer: {
     marginTop: 16,
   },
   taskCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   taskHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
   taskTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     flex: 1,
     marginRight: 8,
   },
   taskPrice: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#2A9D8F',
+    fontWeight: "700",
+    color: "#2A9D8F",
   },
   taskDescription: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     lineHeight: 20,
     marginBottom: 12,
   },
   taskMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   taskMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginRight: 16,
   },
   taskMetaText: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginLeft: 4,
   },
   taskFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   taskPoster: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   posterAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2A9D8F',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#2A9D8F",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 8,
   },
   posterInitial: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   posterName: {
     fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
+    color: "#333",
+    fontWeight: "500",
   },
   statusBadge: {
     paddingVertical: 4,
@@ -1407,16 +1596,16 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   taskTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
     marginTop: 8,
   },
   taskTag: {
-    backgroundColor: '#F1F7F6',
+    backgroundColor: "#F1F7F6",
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12,
@@ -1425,113 +1614,113 @@ const styles = StyleSheet.create({
   },
   taskTagText: {
     fontSize: 11,
-    color: '#2A9D8F',
-    fontWeight: '500',
+    color: "#2A9D8F",
+    fontWeight: "500",
   },
   moreTagsText: {
     fontSize: 11,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
   loadMoreButton: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: "#2A9D8F",
     borderRadius: 8,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
     marginBottom: 20,
   },
   loadMoreText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   // View toggle styles
   viewToggleContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     margin: 10,
-    backgroundColor: '#E9ECEF',
+    backgroundColor: "#E9ECEF",
     borderRadius: 8,
     padding: 4,
   },
   viewToggleButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 8,
     borderRadius: 6,
   },
   activeViewToggle: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: "#2A9D8F",
   },
   viewToggleText: {
     marginLeft: 5,
-    color: '#2A9D8F',
-    fontWeight: '600',
+    color: "#2A9D8F",
+    fontWeight: "600",
   },
   activeViewToggleText: {
-    color: '#fff',
+    color: "#fff",
   },
   // Map styles
   mapContainer: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   map: {
     flex: 1,
   },
   webViewLoading: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F8F9FA",
+    justifyContent: "center",
+    alignItems: "center",
   },
   mapControls: {
-    position: 'absolute',
+    position: "absolute",
     top: 110,
     right: 20,
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   mapControlButton: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 12,
     borderRadius: 25,
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   mapStatsContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 20,
     right: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 15,
     borderRadius: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   mapStatItem: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   mapStatNumber: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2A9D8F',
+    fontWeight: "bold",
+    color: "#2A9D8F",
   },
   mapStatLabel: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
 });
