@@ -125,7 +125,7 @@ export default function SettingsScreen() {
           <View style={styles.balanceHeader}>
             <Text style={styles.balanceTitle}>Your Balance</Text>
             <Ionicons name="wallet-outline" size={24} color="#0ca678" />
-          </View>{' '}
+          </View>
           <Text style={styles.balanceAmount}>€{user?.balance?.toFixed(2) ?? '0.00'}</Text>
           <View style={styles.buttonsContainer}>
             <TouchableOpacity style={styles.depositButton} onPress={handleDeposit}>
