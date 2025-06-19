@@ -10,13 +10,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useReviews } from './context/ReviewsContext';
 
 type UserType = 'employer' | 'employee' | null;
 
 export default function WriteReviewScreen() {
   const { addReview } = useReviews();
+  const { userId } = useLocalSearchParams();
   const [rating, setRating] = useState(0);
   const [reviewData, setReviewData] = useState({
     firstName: '',
@@ -53,6 +54,7 @@ export default function WriteReviewScreen() {
       userName: `${reviewData.firstName} ${reviewData.lastName}`,
       rating,
       comment: reviewData.comment,
+      reviewedUserId: userId as string,
     });
 
     Alert.alert(

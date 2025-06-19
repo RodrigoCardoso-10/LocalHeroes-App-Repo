@@ -30,6 +30,8 @@ export interface Task {
   experienceLevel?: string;
   createdAt: string;
   updatedAt: string;
+  views?: number;
+  applicants?: number;
 }
 
 export interface User {

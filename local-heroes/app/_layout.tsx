@@ -52,16 +52,17 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
         <ReviewsProvider>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-            <Stack.Screen name="register" options={{ headerShown: false }} />
-            <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-            <Stack.Screen name="Reviews" options={{ headerShown: false }} />
-            <Stack.Screen name="write-review" options={{ headerShown: false }} />
-            <Stack.Screen name="customer-support" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="jobs/[id]" options={{ headerShown: false }} />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="register" />
+            <Stack.Screen name="edit-profile" />
+            <Stack.Screen name="Reviews" />
+            <Stack.Screen name="write-review" />
+            <Stack.Screen name="customer-support" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="jobs/[id]" />
+            <Stack.Screen name="profile" />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
           </Stack>
         </ReviewsProvider>
