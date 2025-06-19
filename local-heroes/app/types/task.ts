@@ -1,9 +1,19 @@
 // Task-related types and interfaces
+
+// Task Status Enum - matching backend TaskStatus
+export enum TaskStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  PAID = 'PAID',
+}
+
 export interface Task {
   _id: string;
   title: string;
   description: string;
-  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  status: TaskStatus;
   postedBy: {
     _id: string;
     id: string;
@@ -35,10 +45,12 @@ export interface Task {
 }
 
 export interface User {
-  _id?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
+  _id: string;
+  id: string;
+  username?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
   phone?: string;
   address?: string;
   skills?: string[];
@@ -100,4 +112,9 @@ export interface UpdateTaskData {
   category?: string;
   tags?: string[];
   experienceLevel?: string;
+}
+
+export interface PopulatedTask extends Task {
+  postedBy: User;
+  acceptedBy?: User | null;
 }
