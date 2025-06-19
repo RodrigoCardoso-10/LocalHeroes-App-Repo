@@ -20,7 +20,7 @@ import { WebView } from 'react-native-webview';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
-import { Task, TaskFilters, TasksResponse } from '../types/task';
+import { Task, TaskFilters, TasksResponse, TaskStatus } from '../types/task';
 
 const { width, height } = Dimensions.get('window');
 
@@ -407,7 +407,6 @@ export default function JobsScreen() {
   const loadTasks = async (page: number = 1, resetResults: boolean = false) => {
     if (loading) return; // Prevent multiple simultaneous loads
     setLoading(true);
-
     const filters: TaskFilters = {
       search: searchText,
       minPrice: paymentRange[0],
@@ -417,6 +416,7 @@ export default function JobsScreen() {
       datePosted: selectedDatePosted.join(','),
       tags: selectedTags,
       sortBy: sortOption,
+      status: TaskStatus.OPEN, // Only show OPEN jobs
       page,
       limit: 10,
     };
@@ -430,15 +430,13 @@ export default function JobsScreen() {
         setTasks(response.tasks);
       } else {
         setTasks((prev) => [...prev, ...response.tasks]);
-      }
-
-      // Also create jobs with coordinates for map view
+      } // Also create jobs with coordinates for map view
       const jobMarkers = response.tasks
-        .map((job) => ({
+        .map((job: Task) => ({
           ...job,
           coordinate: getCoordinatesForLocation(job),
         }))
-        .filter((job): job is JobMarker => job.coordinate !== null);
+        .filter((job: JobMarker): job is JobMarker => job.coordinate !== null);
 
       if (resetResults || page === 1) {
         setJobsWithCoordinates(jobMarkers);
