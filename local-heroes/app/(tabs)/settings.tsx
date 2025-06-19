@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext'; // Adjusted path for AuthContext
+import { authService } from '../services/api';
 
 export default function SettingsScreen() {
   const { user, logout, refreshUser } = useAuth();
@@ -50,6 +51,27 @@ export default function SettingsScreen() {
       },
     ]);
   };
+
+  const handleDeposit = async () => {
+    Alert.alert('Deposit Funds', 'Are you sure you want to deposit €10 to your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Deposit €10',
+        style: 'default',
+        onPress: async () => {
+          try {
+            await authService.deposit(10);
+            await refreshUser(); // Refresh to show updated balance
+            Alert.alert('Success', '€10 has been deposited to your account!');
+          } catch (error: any) {
+            console.error('Deposit error:', error);
+            Alert.alert('Error', error.message || 'Failed to deposit funds. Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   const menuItems = [
     {
       id: 'bank',
@@ -103,14 +125,19 @@ export default function SettingsScreen() {
           <View style={styles.balanceHeader}>
             <Text style={styles.balanceTitle}>Your Balance</Text>
             <Ionicons name="wallet-outline" size={24} color="#0ca678" />
-          </View>
+          </View>{' '}
           <Text style={styles.balanceAmount}>€{user?.balance?.toFixed(2) ?? '0.00'}</Text>
-          <TouchableOpacity
-            style={styles.withdrawButton}
-            onPress={() => Alert.alert('Coming Soon', 'This feature is not yet available.')}
-          >
-            <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity style={styles.depositButton} onPress={handleDeposit}>
+              <Text style={styles.depositButtonText}>Deposit €10</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.withdrawButton}
+              onPress={() => Alert.alert('Coming Soon', 'This feature is not yet available.')}
+            >
+              <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         {/* Menu Items */}
         {menuItems.map((item) => (
@@ -309,11 +336,28 @@ const styles = StyleSheet.create({
     color: '#0ca678',
     marginBottom: 20,
   },
+  buttonsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  depositButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    flex: 1,
+  },
+  depositButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   withdrawButton: {
     backgroundColor: '#0ca678',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
+    flex: 1,
   },
   withdrawButtonText: {
     color: 'white',

@@ -238,6 +238,15 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to update profile' };
     }
   },
+  // Deposit funds
+  deposit: async (amount: number) => {
+    try {
+      const response = await api.patch('/users/deposit', { amount });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to deposit funds' };
+    }
+  },
 
   // Tasks
   getTasks: async (filters: any) => {

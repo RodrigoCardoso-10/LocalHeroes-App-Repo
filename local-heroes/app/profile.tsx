@@ -36,7 +36,7 @@ export default function ProfileScreen() {
           id: id,
           email: email,
           currentUser: {
-            id: user?.id,
+            id: user?._id,
             email: user?.email,
           },
         });
@@ -46,7 +46,7 @@ export default function ProfileScreen() {
 
         if (identifier && user) {
           // Check if the requested profile is the current user's profile
-          const isRequestingOwnProfile = identifier === user.id || identifier === user.email;
+          const isRequestingOwnProfile = identifier === user._id || identifier === user.email;
 
           if (!isRequestingOwnProfile) {
             console.warn("Attempted to view another user's profile, which is not allowed");
@@ -58,7 +58,7 @@ export default function ProfileScreen() {
         } // Use current user's data from auth context
         if (user) {
           console.log('Using current user data for profile:', {
-            userId: user.id,
+            userId: user._id,
             email: user.email,
           });
 

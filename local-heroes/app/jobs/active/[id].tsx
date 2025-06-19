@@ -80,14 +80,6 @@ const ActiveJobDetailScreen = () => {
             <Text style={styles.price}>Price: ${task.price}</Text>
             <Text style={styles.status}>Status: {task.status}</Text>
           </View>
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity style={[styles.button, styles.completeButton]} onPress={handleComplete}>
-              <Text style={styles.buttonText}>Mark as Completed</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
-              <Text style={styles.buttonText}>Cancel Job</Text>
-            </TouchableOpacity>
-          </View>
         </>
       )}
     </SafeAreaView>

@@ -152,7 +152,7 @@ export default function JobDetailScreen() {
       // Comprehensive pre-application logging
       console.log('Job Application Attempt:', {
         jobId: job._id,
-        userId: user.id,
+        userId: user._id,
         userEmail: user.email,
         userRole: user.role,
         jobTitle: job.title,
@@ -203,7 +203,7 @@ export default function JobDetailScreen() {
           status: job.status,
         },
         userDetails: {
-          id: user.id,
+          id: user._id,
           email: user.email,
           role: user.role,
         },
@@ -227,7 +227,7 @@ export default function JobDetailScreen() {
                 {
                   message: errorMessage,
                   jobId: job._id,
-                  userId: user.id,
+                  userId: user._id,
                   timestamp: new Date().toISOString(),
                 },
                 null,
@@ -414,9 +414,8 @@ export default function JobDetailScreen() {
         return '#666';
     }
   };
-
   // Determine if the job belongs to the current user
-  const isUserJob = user?.email === job?.postedBy?.email;
+  const isUserJob = user?._id === job?.postedBy?._id;
 
   const handleViewPosterProfile = () => {
     if (!jobPoster) {
@@ -523,7 +522,7 @@ export default function JobDetailScreen() {
               <Text style={styles.metaText}>{job.category}</Text>
             </View>
           </View>
-          {/* Price */}{' '}
+          {/* Price */}
           <View style={styles.priceContainer}>
             <Text style={styles.priceLabel}>Payment</Text>
             <Text style={styles.price}>€{job.price}</Text>
@@ -616,7 +615,7 @@ export default function JobDetailScreen() {
             {/* Poster Info */}
             <View style={styles.employerInfo}>
               <Text style={styles.employerName}>
-                {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}{' '}
+                {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}
                 {jobPoster?.lastName || job?.postedBy?.lastName || ''}
               </Text>
               <Text style={styles.employerEmail}>
@@ -731,7 +730,7 @@ export default function JobDetailScreen() {
               {/* Poster Info */}
               <View style={styles.employerInfo}>
                 <Text style={styles.employerName}>
-                  {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}{' '}
+                  {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}
                   {jobPoster?.lastName || job?.postedBy?.lastName || ''}
                 </Text>
                 <Text style={styles.employerEmail}>
@@ -746,8 +745,8 @@ export default function JobDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>{' '}
-      {/* Action Buttons */}{' '}
+      </ScrollView>
+      {/* Action Buttons */}
       <View style={styles.actionButtonsContainer}>
         {isUserJob && job.status === TaskStatus.IN_PROGRESS && (
           <TouchableOpacity
