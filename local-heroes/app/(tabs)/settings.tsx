@@ -74,11 +74,13 @@ export default function SettingsScreen() {
 
   const menuItems = [
     {
-      id: 'bank',
-      title: 'Bank Details',
-      subtitle: 'Manage you account details',
+
+      id: "bank",
+      title: "Bank Details",
+      subtitle: "Manage your account details",
       icon: <MaterialIcons name="account-balance" size={24} color="#0ca678" />,
-      href: '/bank-details',
+      href: "/components/bank-details",
+
     },
     {
       id: 'privacy',
