@@ -30,6 +30,7 @@ export interface Task {
   experienceLevel?: string;
   createdAt: string;
   updatedAt: string;
+  applicants?: any[];
 }
 
 export interface User {
@@ -68,6 +69,7 @@ export interface TaskFilters {
   experienceLevel?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
 }
 
 export interface TasksResponse {
