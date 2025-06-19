@@ -18,10 +18,13 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from './context/AuthContext';
+import { fileUploadService } from './services/fileUpload';
+import ProfileImage from './components/ProfileImage';
 
 export default function EditProfileScreen() {
   const { user, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -93,7 +96,6 @@ export default function EditProfileScreen() {
       skills: updatedSkills,
     });
   };
-
   const takePhotoWithCamera = async () => {
     try {
       const result = await ImagePicker.launchCameraAsync({
@@ -104,17 +106,26 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setProfileData({
-          ...profileData,
-          profilePicture: result.assets[0].uri,
-        });
+        setIsImageProcessing(true);
+        try {
+          // Upload the image and get the data URL
+          const uploadedImageUrl = await fileUploadService.uploadImage(result.assets[0].uri);
+          setProfileData({
+            ...profileData,
+            profilePicture: uploadedImageUrl,
+          });
+        } catch (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          Alert.alert('Upload Error', 'Failed to process the image. Please try again.');
+        } finally {
+          setIsImageProcessing(false);
+        }
       }
     } catch (error) {
       console.log('Error taking photo:', error);
       Alert.alert('Error', 'There was a problem taking the photo');
     }
   };
-
   const pickImageFromGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -125,10 +136,20 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setProfileData({
-          ...profileData,
-          profilePicture: result.assets[0].uri,
-        });
+        setIsImageProcessing(true);
+        try {
+          // Upload the image and get the data URL
+          const uploadedImageUrl = await fileUploadService.uploadImage(result.assets[0].uri);
+          setProfileData({
+            ...profileData,
+            profilePicture: uploadedImageUrl,
+          });
+        } catch (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          Alert.alert('Upload Error', 'Failed to process the image. Please try again.');
+        } finally {
+          setIsImageProcessing(false);
+        }
       }
     } catch (error) {
       console.log('Error picking image:', error);
@@ -201,8 +222,8 @@ export default function EditProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={isLoading}>
+        <Text style={styles.headerTitle}>Edit Profile</Text>{' '}
+        <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={isLoading || isImageProcessing}>
           {isLoading ? (
             <ActivityIndicator size="small" color="#0ca678" />
           ) : (
@@ -212,19 +233,20 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        {' '}
         {/* Profile Picture */}
         <View style={styles.profilePictureContainer}>
-          <Image
-            source={{
-              uri: profileData.profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
-            }}
-            style={styles.profilePicture}
-          />
-          <TouchableOpacity style={styles.editPictureButton} onPress={showImageOptions}>
+          <ProfileImage uri={profileData.profilePicture} size={120} style={styles.profilePicture} />
+          {isImageProcessing && (
+            <View style={styles.imageProcessingOverlay}>
+              <ActivityIndicator size="large" color="#0ca678" />
+              <Text style={styles.processingText}>Processing...</Text>
+            </View>
+          )}
+          <TouchableOpacity style={styles.editPictureButton} onPress={showImageOptions} disabled={isImageProcessing}>
             <Ionicons name="camera" size={20} color="white" />
           </TouchableOpacity>
         </View>
-
         {/* Form Fields */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
@@ -282,7 +304,6 @@ export default function EditProfileScreen() {
             />
           </View>
         </View>
-
         {/* Skills Section */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Skills</Text>
@@ -310,7 +331,6 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
         {/* Bio Section */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Bio</Text>
@@ -323,7 +343,6 @@ export default function EditProfileScreen() {
             numberOfLines={4}
           />
         </View>
-
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
@@ -467,4 +486,21 @@ const styles = StyleSheet.create({
   bottomSpace: {
     height: 40,
   },
-}); 
+  imageProcessingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 60,
+  },
+  processingText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#0ca678',
+    fontWeight: '500',
+  },
+});
