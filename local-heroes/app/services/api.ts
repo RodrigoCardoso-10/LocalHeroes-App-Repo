@@ -293,12 +293,19 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to delete task' };
     }
   },
-
   applyForTask: async (id: string) => {
     try {
-      const response = await api.post(`/tasks/${id}/apply`);
+      console.log('Making apply request for task ID:', id);
+      // Send an empty body since the endpoint doesn't expect any data
+      const response = await api.patch(`/tasks/${id}/apply`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Apply for task error:', {
+        taskId: id,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to apply for task' };
     }
   },
@@ -311,21 +318,35 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to fetch applicants' };
     }
   },
-
   acceptApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.post(`/tasks/${taskId}/accept/${applicantId}`);
+      console.log('Accepting applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/accept`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Accept applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to accept applicant' };
     }
   },
-
   denyApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.post(`/tasks/${taskId}/deny/${applicantId}`);
+      console.log('Denying applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/deny`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Deny applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to deny applicant' };
     }
   },
@@ -394,86 +415,8 @@ export const authService = {
     }
   },
 
-  // Get user profile by ID or email
-  getUserProfile: async (identifier: string) => {
-    try {
-      console.log('Fetching user profile:', { identifier });
-
-      // Check if the identifier looks like an email
-      const isEmail = identifier.includes('@');
-
-      // Array of possible endpoints to try
-      const endpoints = isEmail
-        ? [
-            `/users/profile?email=${encodeURIComponent(identifier)}`,
-            `/users/profile/email/${encodeURIComponent(identifier)}`,
-            `/users/by-email/${encodeURIComponent(identifier)}`,
-          ]
-        : [`/users/profile/${identifier}`];
-
-      // Try each endpoint until one succeeds
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`Attempting to fetch profile from endpoint: ${endpoint}`);
-
-          const response = await api.get(endpoint, {
-            timeout: 10000, // 10-second timeout
-            headers: {
-              'X-Request-Context': JSON.stringify({
-                source: 'mobile-app',
-                requestType: isEmail ? 'user-profile-by-email' : 'user-profile-by-id',
-                timestamp: new Date().toISOString(),
-              }),
-            },
-          });
-
-          console.log('User profile retrieved successfully:', {
-            identifier,
-            profileData: {
-              firstName: response.data.firstName,
-              lastName: response.data.lastName,
-              email: response.data.email,
-              profileFetchTimestamp: new Date().toISOString(),
-            },
-          });
-
-          return response.data;
-        } catch (endpointError: any) {
-          console.warn(`Failed to fetch profile from ${endpoint}:`, {
-            errorMessage: endpointError.message,
-            errorResponse: endpointError.response?.data,
-          });
-
-          // If it's the last endpoint, rethrow the error
-          if (endpoint === endpoints[endpoints.length - 1]) {
-            throw endpointError;
-          }
-        }
-      }
-
-      // This should never be reached, but TypeScript requires a return
-      throw new Error('Unable to retrieve user profile');
-    } catch (error: any) {
-      console.error('Failed to retrieve user profile:', {
-        identifier,
-        errorMessage: error.message,
-        errorResponse: error.response?.data,
-        fullError: JSON.stringify(error, null, 2),
-      });
-
-      // More detailed error handling
-      if (error.response) {
-        // Server responded with an error
-        throw new Error(error.response.data?.message || `Failed to retrieve profile. Status: ${error.response.status}`);
-      } else if (error.request) {
-        // Request was made but no response received
-        throw new Error('No response from server. Please check your connection.');
-      } else {
-        // Something happened in setting up the request
-        throw new Error(`Profile retrieval error: ${error.message}`);
-      }
-    }
-  },
+  // Note: Getting other users' profiles is not supported by the backend for privacy reasons
+  // Only the current user can access their own profile via checkAuth() method
 };
 
 export default api;

@@ -26,94 +26,56 @@ export default function ProfileScreen() {
   const [profileData, setProfileData] = useState<User>({});
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Log incoming parameters for debugging
         console.log('Profile Screen - Fetch Parameters:', {
           id: id,
           email: email,
           currentUser: {
-            id: (user as any)?._id,
-            email: (user as any)?.email
-          }
+            id: user?.id,
+            email: user?.email,
+          },
         });
 
-        // Determine the identifier to use
+        // For privacy reasons, only allow viewing the current user's profile
         const identifier = (id || email) as string;
 
-        if (identifier) {
-          console.log('Attempting to fetch profile with identifier:', identifier);
+        if (identifier && user) {
+          // Check if the requested profile is the current user's profile
+          const isRequestingOwnProfile = identifier === user.id || identifier === user.email;
 
-          try {
-            const fetchedProfile = await authService.getUserProfile(identifier);
-
-            console.log('Fetched Profile Details:', {
-              fetchedProfileId: fetchedProfile._id,
-              fetchedProfileEmail: fetchedProfile.email,
-              currentUserId: (user as any)?._id,
-              currentUserEmail: (user as any)?.email
-            });
-
-            // Set the profile data
-            setProfileData(fetchedProfile);
-
-            // Determine if this is the current user's profile
-            const isCurrentUserProfile = 
-              (fetchedProfile._id === (user as any)?._id) || 
-              (fetchedProfile.email === (user as any)?.email);
-
-            console.log('Is Own Profile Check:', {
-              idMatch: fetchedProfile._id === (user as any)?._id,
-              emailMatch: fetchedProfile.email === (user as any)?.email,
-              isCurrentUserProfile: isCurrentUserProfile
-            });
-
-            setIsOwnProfile(isCurrentUserProfile);
-          } catch (profileError) {
-            console.error('Profile Fetch Error:', profileError);
-            
-            // More informative error handling
-            Alert.alert(
-              'Profile Error', 
-              'Unable to retrieve the requested profile. Please try again.', 
-              [{ 
-                text: 'OK', 
-                onPress: () => router.back() 
-              }]
-            );
+          if (!isRequestingOwnProfile) {
+            console.warn("Attempted to view another user's profile, which is not allowed");
+            Alert.alert('Access Denied', 'For privacy reasons, you can only view your own profile.', [
+              { text: 'OK', onPress: () => router.back() },
+            ]);
+            return;
           }
+        } // Use current user's data from auth context
+        if (user) {
+          console.log('Using current user data for profile:', {
+            userId: user.id,
+            email: user.email,
+          });
+
+          setProfileData(user);
+          setIsOwnProfile(true);
         } else {
-          // If no identifier, show current user's profile
-          if (user) {
-            setProfileData({
-              _id: (user as any)._id || '',
-              firstName: (user as any).firstName || '',
-              lastName: (user as any).lastName || '',
-              email: (user as any).email || '',
-              phone: (user as any).phone || '',
-              address: (user as any).address || '',
-              skills: (user as any).skills || [],
-              bio: (user as any).bio || '',
-              profilePicture: (user as any).profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
-            });
-            setIsOwnProfile(true);
-          }
+          throw new Error('User not logged in');
         }
       } catch (error) {
         console.error('Unexpected error in profile retrieval:', error);
-        
-        Alert.alert(
-          'Unexpected Error', 
-          'An unexpected error occurred while retrieving the profile.', 
-          [{ 
-            text: 'OK', 
-            onPress: () => router.back() 
-          }]
-        );
+
+        Alert.alert('Profile Error', 'Unable to load profile. Please try again.', [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]);
       } finally {
         setIsLoading(false);
       }
@@ -123,10 +85,11 @@ export default function ProfileScreen() {
   }, [id, email, user]);
 
   // Filter reviews for this specific profile
-  const userReviews = reviews.filter(review => 
-    (review as any).reviewedUserId && 
-    (profileData as any)._id && 
-    (review as any).reviewedUserId === (profileData as any)._id
+  const userReviews = reviews.filter(
+    (review) =>
+      (review as any).reviewedUserId &&
+      (profileData as any)._id &&
+      (review as any).reviewedUserId === (profileData as any)._id
   );
 
   if (isLoading) {
@@ -167,7 +130,9 @@ export default function ProfileScreen() {
             style={styles.profilePicture}
           />
           <View style={styles.nameContainer}>
-            <Text style={styles.fullName}>{`${(profileData as any).firstName || ''} ${(profileData as any).lastName || ''}`}</Text>
+            <Text style={styles.fullName}>{`${(profileData as any).firstName || ''} ${
+              (profileData as any).lastName || ''
+            }`}</Text>
             <Text style={styles.emailText}>{(profileData as any).email || ''}</Text>
           </View>
         </View>
@@ -175,7 +140,7 @@ export default function ProfileScreen() {
         {/* Personal Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Phone</Text>
             <Text style={styles.infoValue}>{(profileData as any).phone || 'Not provided'}</Text>
@@ -206,9 +171,7 @@ export default function ProfileScreen() {
         {/* Bio Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Bio</Text>
-          <Text style={styles.bioText}>
-            {(profileData as any).bio || 'No bio provided yet'}
-          </Text>
+          <Text style={styles.bioText}>{(profileData as any).bio || 'No bio provided yet'}</Text>
         </View>
 
         {/* Reviews Section */}
@@ -217,17 +180,15 @@ export default function ProfileScreen() {
           {userReviews.length > 0 ? (
             userReviews.map((review: Review, index: number) => (
               <View key={index} style={styles.reviewContainer}>
-                <Text style={styles.reviewerName}>
-                  {(review as any).reviewerName || 'Anonymous'}
-                </Text>
+                <Text style={styles.reviewerName}>{(review as any).reviewerName || 'Anonymous'}</Text>
                 <Text style={styles.reviewText}>{(review as any).comment}</Text>
                 <View style={styles.ratingContainer}>
                   {[...Array(5)].map((_, i) => (
-                    <Ionicons 
-                      key={i} 
-                      name={i < ((review as any).rating || 0) ? "star" : "star-outline"} 
-                      size={16} 
-                      color="#FFD700" 
+                    <Ionicons
+                      key={i}
+                      name={i < ((review as any).rating || 0) ? 'star' : 'star-outline'}
+                      size={16}
+                      color="#FFD700"
                     />
                   ))}
                 </View>

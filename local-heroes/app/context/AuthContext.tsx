@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 
 // Define user type
 type User = {
-  id: string;
+  _id: string; // MongoDB ObjectId - primary identifier
   email: string;
   firstName: string;
   lastName: string;
@@ -33,6 +33,7 @@ type AuthContextType = {
   register: (userData: { firstName: string; lastName: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<void>;
   clearError: () => void;
 };
 
@@ -218,6 +219,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Refresh user data (including balance)
+  const refreshUser = async () => {
+    try {
+      setError(null);
+      const userData = await authService.checkAuth();
+      setUser(userData);
+      await SecureStore.setItemAsync('user', JSON.stringify(userData));
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh user data');
+      throw err;
+    }
+  };
+
   // Clear error
   const clearError = () => {
     setError(null);
@@ -234,6 +248,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         register,
         logout,
         updateUser,
+        refreshUser,
         clearError,
       }}
     >
