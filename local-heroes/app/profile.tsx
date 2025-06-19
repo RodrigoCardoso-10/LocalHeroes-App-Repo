@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,13 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from './context/AuthContext';
-import { useReviews } from './context/ReviewsContext';
-import { authService } from './services/api';
-import { User, Review } from './types/task';
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "./context/AuthContext";
+import { useReviews } from "./context/ReviewsContext";
+import { authService } from "./services/api";
+import { User, Review } from "./types/task";
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -32,7 +32,7 @@ export default function ProfileScreen() {
         setIsLoading(true);
 
         // Log incoming parameters for debugging
-        console.log('Profile Screen - Fetch Parameters:', {
+        console.log("Profile Screen - Fetch Parameters:", {
           id: id,
           email: email,
           currentUser: {
@@ -41,21 +41,32 @@ export default function ProfileScreen() {
           },
         });
 
-        // For privacy reasons, only allow viewing the current user's profile
         const identifier = (id || email) as string;
 
+        // If identifier is present and does not match current user, fetch other user's profile
         if (identifier && user) {
           // Check if the requested profile is the current user's profile
           const isRequestingOwnProfile = identifier === user._id || identifier === user.email;
 
           if (!isRequestingOwnProfile) {
-            console.warn("Attempted to view another user's profile, which is not allowed");
-            Alert.alert('Access Denied', 'For privacy reasons, you can only view your own profile.', [
-              { text: 'OK', onPress: () => router.back() },
-            ]);
-            return;
+            // Fetch other user's profile
+            try {
+              const otherProfile = await authService.getUserProfile(identifier);
+              setProfileData(otherProfile);
+              setIsOwnProfile(false);
+              return;
+            } catch (err: any) {
+              console.error("Failed to fetch other user profile:", err);
+              Alert.alert(
+                "Profile Error",
+                "Unable to load user profile. Please try again.",
+                [{ text: "OK", onPress: () => router.back() }]
+              );
+              return;
+            }
           }
-        } // Use current user's data from auth context
+        }
+        // Use current user's data from auth context
         if (user) {
           console.log('Using current user data for profile:', {
             userId: user._id,
@@ -65,17 +76,20 @@ export default function ProfileScreen() {
           setProfileData(user);
           setIsOwnProfile(true);
         } else {
-          throw new Error('User not logged in');
+          throw new Error("User not logged in");
         }
       } catch (error) {
-        console.error('Unexpected error in profile retrieval:', error);
-
-        Alert.alert('Profile Error', 'Unable to load profile. Please try again.', [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ]);
+        console.error("Unexpected error in profile retrieval:", error);
+        Alert.alert(
+          "Profile Error",
+          "Unable to load profile. Please try again.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.back(),
+            },
+          ]
+        );
       } finally {
         setIsLoading(false);
       }
@@ -85,6 +99,21 @@ export default function ProfileScreen() {
   }, [id, email, user]);
 
   // Filter reviews for this specific profile
+  useEffect(() => {
+    if (profileData && (profileData as any)._id) {
+      console.log(
+        "ProfileScreen: Viewing profile with _id:",
+        (profileData as any)._id
+      );
+      const filteredReviews = reviews.filter(
+        (review) =>
+          (review as any).reviewedUserId &&
+          (review as any).reviewedUserId === (profileData as any)._id
+      );
+      console.log("ProfileScreen: Filtered userReviews:", filteredReviews);
+    }
+  }, [profileData, reviews]);
+
   const userReviews = reviews.filter(
     (review) =>
       (review as any).reviewedUserId &&
@@ -109,12 +138,18 @@ export default function ProfileScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         {isOwnProfile && (
-          <TouchableOpacity onPress={() => router.push('/edit-profile' as any)} style={styles.editButton}>
+          <TouchableOpacity
+            onPress={() => router.push("/edit-profile" as any)}
+            style={styles.editButton}
+          >
             <Ionicons name="create-outline" size={24} color="#0ca678" />
           </TouchableOpacity>
         )}
@@ -125,15 +160,19 @@ export default function ProfileScreen() {
         <View style={styles.profilePictureContainer}>
           <Image
             source={{
-              uri: (profileData as any).profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
+              uri:
+                (profileData as any).profilePicture ||
+                "https://randomuser.me/api/portraits/men/32.jpg",
             }}
             style={styles.profilePicture}
           />
           <View style={styles.nameContainer}>
-            <Text style={styles.fullName}>{`${(profileData as any).firstName || ''} ${
-              (profileData as any).lastName || ''
-            }`}</Text>
-            <Text style={styles.emailText}>{(profileData as any).email || ''}</Text>
+            <Text style={styles.fullName}>{`${
+              (profileData as any).firstName || ""
+            } ${(profileData as any).lastName || ""}`}</Text>
+            <Text style={styles.emailText}>
+              {(profileData as any).email || ""}
+            </Text>
           </View>
         </View>
 
@@ -143,12 +182,16 @@ export default function ProfileScreen() {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Phone</Text>
-            <Text style={styles.infoValue}>{(profileData as any).phone || 'Not provided'}</Text>
+            <Text style={styles.infoValue}>
+              {(profileData as any).phone || "Not provided"}
+            </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Address</Text>
-            <Text style={styles.infoValue}>{(profileData as any).address || 'Not provided'}</Text>
+            <Text style={styles.infoValue}>
+              {(profileData as any).address || "Not provided"}
+            </Text>
           </View>
         </View>
 
@@ -156,12 +199,15 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skills</Text>
           <View style={styles.skillsContainer}>
-            {(profileData as any).skills && (profileData as any).skills.length > 0 ? (
-              (profileData as any).skills.map((skill: string, index: number) => (
-                <View key={index} style={styles.skillTag}>
-                  <Text style={styles.skillText}>{skill}</Text>
-                </View>
-              ))
+            {(profileData as any).skills &&
+            (profileData as any).skills.length > 0 ? (
+              (profileData as any).skills.map(
+                (skill: string, index: number) => (
+                  <View key={index} style={styles.skillTag}>
+                    <Text style={styles.skillText}>{skill}</Text>
+                  </View>
+                )
+              )
             ) : (
               <Text style={styles.noContentText}>No skills added yet</Text>
             )}
@@ -171,7 +217,9 @@ export default function ProfileScreen() {
         {/* Bio Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Bio</Text>
-          <Text style={styles.bioText}>{(profileData as any).bio || 'No bio provided yet'}</Text>
+          <Text style={styles.bioText}>
+            {(profileData as any).bio || "No bio provided yet"}
+          </Text>
         </View>
 
         {/* Reviews Section */}
@@ -180,13 +228,19 @@ export default function ProfileScreen() {
           {userReviews.length > 0 ? (
             userReviews.map((review: Review, index: number) => (
               <View key={index} style={styles.reviewContainer}>
-                <Text style={styles.reviewerName}>{(review as any).reviewerName || 'Anonymous'}</Text>
+                <Text style={styles.reviewerName}>
+                  {(review as any).reviewerName || "Anonymous"}
+                </Text>
                 <Text style={styles.reviewText}>{(review as any).comment}</Text>
                 <View style={styles.ratingContainer}>
                   {[...Array(5)].map((_, i) => (
                     <Ionicons
                       key={i}
-                      name={i < ((review as any).rating || 0) ? 'star' : 'star-outline'}
+                      name={
+                        i < ((review as any).rating || 0)
+                          ? "star"
+                          : "star-outline"
+                      }
                       size={16}
                       color="#FFD700"
                     />
@@ -208,32 +262,32 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   header: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   editButton: {
     padding: 4,
@@ -243,7 +297,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   profilePictureContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: 20,
   },
   profilePicture: {
@@ -251,28 +305,28 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: '#0ca678',
+    borderColor: "#0ca678",
   },
   nameContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 12,
   },
   fullName: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   emailText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -280,35 +334,35 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 16,
-    color: '#333',
+    color: "#333",
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   infoLabel: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     flex: 1,
   },
   infoValue: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     flex: 2,
-    textAlign: 'right',
+    textAlign: "right",
   },
   skillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   skillTag: {
-    backgroundColor: '#e6f8f5',
+    backgroundColor: "#e6f8f5",
     borderRadius: 16,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -316,39 +370,39 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   skillText: {
-    color: '#0ca678',
+    color: "#0ca678",
   },
   bioText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     lineHeight: 24,
   },
   noContentText: {
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
   bottomSpace: {
     height: 40,
   },
   reviewContainer: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
   },
   reviewerName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 4,
   },
   reviewText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 8,
   },
   ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
 });
