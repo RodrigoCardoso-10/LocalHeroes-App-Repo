@@ -20,11 +20,9 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
-      ],
-      "package": "com.gramostv.localheroes"
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "package": "com.gramostv.localheroes",
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",
