@@ -8,17 +8,20 @@ import {
   TextInput,
   Alert,
   ScrollView,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useReviews } from "./context/ReviewsContext";
+
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useReviews } from './context/ReviewsContext';
+
 
 type UserType = "employer" | "employee" | null;
 
 export default function WriteReviewScreen() {
   const { addReview } = useReviews();
-  const params = useLocalSearchParams();
-  const reviewedUserId = params.reviewedUserId as string | undefined;
+
+  const { userId } = useLocalSearchParams();
+
   const [rating, setRating] = useState(0);
   const [reviewData, setReviewData] = useState({
     firstName: "",
@@ -59,7 +62,9 @@ export default function WriteReviewScreen() {
       userName: `${reviewData.firstName} ${reviewData.lastName}`,
       rating,
       comment: reviewData.comment,
-      reviewedUserId,
+
+      reviewedUserId: userId as string,
+
     });
 
     Alert.alert("Success", "Thank you for your review!", [
