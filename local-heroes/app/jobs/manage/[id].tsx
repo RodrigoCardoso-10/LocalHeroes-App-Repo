@@ -23,6 +23,7 @@ const ManageJobScreen = () => {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
 
   const fetchTaskDetails = async () => {
     if (!id) return;
@@ -65,16 +66,39 @@ const ManageJobScreen = () => {
       Alert.alert('Error', err.message || 'Could not deny the applicant.');
     }
   };
-
   const handleConfirmCompletion = async () => {
-    if (!id) return;
-    try {
-      await authService.confirmCompletion(id);
-      Alert.alert('Success', 'You have confirmed the job completion and released the funds.');
-      fetchTaskDetails();
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not confirm the job completion.');
-    }
+    if (!id || !task) return;
+
+    Alert.alert(
+      'Mark Job Complete & Pay',
+      `Are you sure you want to mark this job as completed? This will immediately transfer $${task.price} to the worker.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Complete & Pay',
+          style: 'default',
+          onPress: async () => {
+            try {
+              setCompleting(true);
+              const updatedTask = await authService.completeTask(id);
+              setTask(updatedTask);
+              Alert.alert(
+                'Job Completed!',
+                `The job has been marked as completed and $${task.price} has been transferred to the worker. Thank you for using LocalHeroes!`,
+                [{ text: 'OK' }]
+              );
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Could not complete the job and process payment.');
+            } finally {
+              setCompleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -107,25 +131,32 @@ const ManageJobScreen = () => {
           <Text style={styles.status}>Status: {task.status}</Text>
         </View>
       )}
-
-      {task && task.status === TaskStatus.COMPLETED && (
+      {task && task.status === TaskStatus.IN_PROGRESS && (
         <View style={styles.confirmationContainer}>
           <Text style={styles.confirmationText}>
-            The employee has marked this job as completed. Please review their work and release the funds.
+            This job is currently in progress. Once the work is complete, you can mark it as finished and transfer
+            payment to the worker.
           </Text>
-          <TouchableOpacity style={[styles.button, styles.confirmButton]} onPress={handleConfirmCompletion}>
-            <Text style={styles.buttonText}>Confirm Completion & Release Funds</Text>
+          <TouchableOpacity
+            style={[styles.button, styles.confirmButton]}
+            onPress={handleConfirmCompletion}
+            disabled={completing}
+          >
+            {completing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>Mark Complete & Pay</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
-
       {task && (task.status === TaskStatus.OPEN || task.status === TaskStatus.IN_PROGRESS) && (
         <>
           <Text style={styles.applicantsHeader}>Applicants</Text>
           {applicants.length > 0 ? (
             <FlatList
               data={applicants}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item._id}
               renderItem={({ item }) => (
                 <View style={styles.applicantCard}>
                   <View>
@@ -137,11 +168,11 @@ const ManageJobScreen = () => {
                   <View style={styles.buttonsContainer}>
                     <TouchableOpacity
                       style={[styles.button, styles.acceptButton]}
-                      onPress={() => handleAccept(item.id)}
+                      onPress={() => handleAccept(item._id)}
                     >
                       <Text style={styles.buttonText}>Accept</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.button, styles.denyButton]} onPress={() => handleDeny(item.id)}>
+                    <TouchableOpacity style={[styles.button, styles.denyButton]} onPress={() => handleDeny(item._id)}>
                       <Text style={styles.buttonText}>Deny</Text>
                     </TouchableOpacity>
                   </View>
@@ -153,7 +184,6 @@ const ManageJobScreen = () => {
           )}
         </>
       )}
-
       {task && (task.status === TaskStatus.CANCELLED || task.status === TaskStatus.PAID) && (
         <Text style={styles.jobClosedText}>This job is closed.</Text>
       )}

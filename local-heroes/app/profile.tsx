@@ -45,8 +45,8 @@ export default function ProfileScreen() {
 
         // If identifier is present and does not match current user, fetch other user's profile
         if (identifier && user) {
-          const isRequestingOwnProfile =
-            identifier === user._id || identifier === user.email;
+          // Check if the requested profile is the current user's profile
+          const isRequestingOwnProfile = identifier === user._id || identifier === user.email;
 
           if (!isRequestingOwnProfile) {
             // Fetch other user's profile
@@ -68,6 +68,11 @@ export default function ProfileScreen() {
         }
         // Use current user's data from auth context
         if (user) {
+          console.log('Using current user data for profile:', {
+            userId: user._id,
+            email: user.email,
+          });
+
           setProfileData(user);
           setIsOwnProfile(true);
         } else {

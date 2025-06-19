@@ -455,9 +455,8 @@ export default function JobDetailScreen() {
         return "#666";
     }
   };
-
   // Determine if the job belongs to the current user
-  const isUserJob = user?.email === job?.postedBy?.email;
+  const isUserJob = user?._id === job?.postedBy?._id;
 
   const handleViewPosterProfile = () => {
     if (!jobPoster) {
@@ -592,7 +591,7 @@ export default function JobDetailScreen() {
               <Text style={styles.metaText}>{job.category}</Text>
             </View>
           </View>
-          {/* Price */}{" "}
+          {/* Price */}
           <View style={styles.priceContainer}>
             <Text style={styles.priceLabel}>Payment</Text>
             <Text style={styles.price}>€{job.price}</Text>
@@ -696,8 +695,8 @@ export default function JobDetailScreen() {
             {/* Poster Info */}
             <View style={styles.employerInfo}>
               <Text style={styles.employerName}>
-                {jobPoster?.firstName || job?.postedBy?.firstName || "Unknown"}{" "}
-                {jobPoster?.lastName || job?.postedBy?.lastName || ""}
+                {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}
+                {jobPoster?.lastName || job?.postedBy?.lastName || ''}
               </Text>
               <Text style={styles.employerEmail}>
                 {jobPoster?.email ||
@@ -866,10 +865,8 @@ export default function JobDetailScreen() {
               {/* Poster Info */}
               <View style={styles.employerInfo}>
                 <Text style={styles.employerName}>
-                  {jobPoster?.firstName ||
-                    job?.postedBy?.firstName ||
-                    "Unknown"}{" "}
-                  {jobPoster?.lastName || job?.postedBy?.lastName || ""}
+                  {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}
+                  {jobPoster?.lastName || job?.postedBy?.lastName || ''}
                 </Text>
                 <Text style={styles.employerEmail}>
                   {jobPoster?.email ||
@@ -888,8 +885,8 @@ export default function JobDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>{" "}
-      {/* Action Buttons */}{" "}
+      </ScrollView>
+      {/* Action Buttons */}
       <View style={styles.actionButtonsContainer}>
         {isUserJob && job.status === TaskStatus.IN_PROGRESS && (
           <TouchableOpacity
