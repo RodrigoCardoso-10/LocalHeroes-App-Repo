@@ -677,7 +677,13 @@ export default function JobDetailScreen() {
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Applicants</Text>
-              <Text style={styles.statValue}>{job.applicants ?? 0}</Text>
+              <Text style={styles.statValue}>
+                {Array.isArray(job.applicants)
+                  ? job.applicants.length
+                  : typeof job.applicants === "number"
+                  ? job.applicants
+                  : 0}
+              </Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="calendar-outline" size={20} color="#666" />
