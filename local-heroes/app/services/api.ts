@@ -14,11 +14,16 @@ if (Platform.OS === 'android') {
 // Create an axios instance with default configuration
 const api = axios.create({
   baseURL,
+  timeout: 10000, // 10 second timeout
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Important for handling cookies (JWT tokens)
 });
+
+// Add console logging for debugging
+console.log('API baseURL:', baseURL);
+console.log('Platform:', Platform.OS);
 
 // Add a request interceptor to add the token to requests
 api.interceptors.request.use(
@@ -43,10 +48,18 @@ export const setupResponseInterceptor = (logout: () => void) => {
   if (responseInterceptorId !== null) {
     api.interceptors.response.eject(responseInterceptorId);
   }
-
   responseInterceptorId = api.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
+      // Enhanced error logging for debugging
+      console.log('API Error:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+      });
+
       const originalRequest = error.config as AxiosRequestConfig & {
         _retry?: boolean;
       };

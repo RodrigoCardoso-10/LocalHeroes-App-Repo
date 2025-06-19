@@ -20,7 +20,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "INTERNET", "ACCESS_NETWORK_STATE"],
       "package": "com.gramostv.localheroes",
       "usesCleartextTraffic": true,
       "networkSecurityConfig": "./network_security_config.xml"
