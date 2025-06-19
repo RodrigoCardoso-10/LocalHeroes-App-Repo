@@ -82,6 +82,7 @@ export interface TaskFilters {
   experienceLevel?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
 }
 
 export interface TasksResponse {

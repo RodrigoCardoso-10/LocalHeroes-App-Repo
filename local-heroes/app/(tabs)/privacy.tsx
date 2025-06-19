@@ -14,6 +14,7 @@ import {
 import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function PrivacyScreen() {
   const { token, logout } = useAuth();
@@ -119,9 +120,9 @@ export default function PrivacyScreen() {
           >
             <TouchableOpacity
               onPress={() => router.replace("/settings")}
-              style={{ marginRight: 8 }}
+              style={{ marginRight: 8, padding: 4 }}
             >
-              <Text style={{ fontSize: 18, color: "#0ca678" }}>{"< Back"}</Text>
+              <Ionicons name="arrow-back" size={24} color="#222" />
             </TouchableOpacity>
             <Text style={styles.title}>Privacy & Security</Text>
           </View>
