@@ -1,26 +1,28 @@
-export enum TaskStatus {
-  OPEN = 'OPEN',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  PAID = 'PAID',
-}
-
 // Task-related types and interfaces
 export interface Task {
   _id: string;
   title: string;
   description: string;
-  status: TaskStatus;
-  postedBy: User;
-  acceptedBy?: User | null;
-  location?: {
-    address?: string;
-    point?: {
-      type: 'Point';
-      coordinates: [number, number];
-    };
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  postedBy: {
+    _id: string;
+    id: string;
+    username?: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    skills?: string[];
   };
+  acceptedBy?: {
+    _id: string;
+    id: string;
+    username?: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    skills?: string[];
+  } | null;
+  location?: string;
   price: number;
   dueDate?: string;
   category?: string;
@@ -28,15 +30,9 @@ export interface Task {
   experienceLevel?: string;
   createdAt: string;
   updatedAt: string;
-  applicants?: User[];
   views?: number;
+  applicants?: number;
 }
-
-export type PopulatedTask = Task & {
-  postedBy: User;
-  acceptedBy?: User | null;
-  applicants: User[];
-};
 
 export interface User {
   _id?: string;
@@ -68,13 +64,12 @@ export interface TaskFilters {
   category?: string;
   minPrice?: number;
   maxPrice?: number;
-  status?: TaskStatus;
+  status?: string;
   datePosted?: string;
   tags?: string[];
   experienceLevel?: string;
   page?: number;
   limit?: number;
-  sortBy?: string;
 }
 
 export interface TasksResponse {

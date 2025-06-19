@@ -1,4 +1,3 @@
-import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -6,33 +5,35 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  Platform,
   RefreshControl,
-  SafeAreaView,
-  ScrollView,
+  Platform,
+  Image,
   Share,
-  StyleSheet,
+  SafeAreaView,
+  View,
   Text,
   TouchableOpacity,
-  View,
+  ScrollView,
+  StyleSheet,
 } from "react-native";
-import Header from "../components/Header";
-import Colors from "../constants/Colors";
-import { useAuth } from "../context/AuthContext";
+import { MaterialIcons } from "@expo/vector-icons";
 import { authService } from "../services/api";
 import { Task } from "../types/task";
-import { TaskStatus } from "../types/task";
+import { useAuth } from "../context/AuthContext";
+import { useReviews } from "../context/ReviewsContext";
+import type { Review } from "../context/ReviewsContext";
+import Colors from "../constants/Colors";
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const { reviews } = useReviews();
   const [job, setJob] = useState<Task | null>(null);
   const [jobPoster, setJobPoster] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [confirmingCompletion, setConfirmingCompletion] = useState(false);
 
   // Load job details and poster profile
   useEffect(() => {
@@ -43,7 +44,9 @@ export default function JobDetailScreen() {
     try {
       setLoading(true);
 
-      console.log("Loading job details for ID:", id); // Add more robust error handling for task retrieval
+      console.log("Loading job details for ID:", id);
+
+      // Add more robust error handling for task retrieval
       try {
         const response = await authService.getTaskById(id as string);
         setJob(response);
@@ -57,18 +60,46 @@ export default function JobDetailScreen() {
                 id: response.postedBy._id,
                 email: response.postedBy.email,
                 name: `${response.postedBy.firstName} ${response.postedBy.lastName}`,
+                skills: response.postedBy.skills,
               }
             : "No poster information",
         });
 
-        // Use the populated poster information directly from the task response
-        if (response.postedBy) {
-          setJobPoster(response.postedBy);
-          console.log("Using populated poster information:", {
-            posterId: response.postedBy._id,
-            name: `${response.postedBy.firstName} ${response.postedBy.lastName}`,
-            email: response.postedBy.email,
-          });
+        // Fetch job poster's profile if available
+        if (response.postedBy && response.postedBy.email) {
+          try {
+            const posterProfile = await authService.getUserProfile(
+              response.postedBy.email
+            );
+
+            console.log("Poster Profile Retrieved:", {
+              posterId: posterProfile._id,
+              name: `${posterProfile.firstName} ${posterProfile.lastName}`,
+              email: posterProfile.email,
+              skills: posterProfile.skills,
+              profilePicture: posterProfile.profilePicture
+                ? "Available"
+                : "Not Available",
+            });
+
+            // Ensure email is preserved
+            const fullPosterProfile = {
+              ...posterProfile,
+              email: response.postedBy.email, // Preserve original email from job details
+            };
+
+            setJobPoster(fullPosterProfile);
+          } catch (profileError: any) {
+            console.warn("Failed to retrieve full poster profile:", {
+              email: response.postedBy.email,
+              errorMessage: profileError?.message,
+            });
+            // Fallback to basic poster information
+            setJobPoster({
+              ...response.postedBy,
+              email: response.postedBy.email,
+            });
+          }
         }
       } catch (taskError: any) {
         console.error("Detailed task retrieval error:", {
@@ -332,95 +363,22 @@ export default function JobDetailScreen() {
       console.error("Failed to share:", error);
     }
   };
+
   const toggleBookmark = () => {
     setBookmarked(!bookmarked);
     // TODO: Implement bookmark API call
   };
-  const handleCompleteAndPay = async () => {
-    if (!job || !user) {
-      return;
-    }
 
-    try {
-      setConfirmingCompletion(true);
-
-      console.log("Marking job as complete and processing payment:", {
-        jobId: job._id,
-        jobTitle: job.title,
-        currentStatus: job.status,
-        price: job.price,
-        userId: user._id,
-        userEmail: user.email,
-      });
-
-      Alert.alert(
-        "Mark Job Complete & Pay",
-        `Are you sure you want to mark this job as completed? This will immediately transfer $${job.price} to the worker.`,
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Complete & Pay",
-            style: "default",
-            onPress: async () => {
-              try {
-                const updatedJob = await authService.completeTask(job._id);
-                setJob(updatedJob);
-
-                console.log(
-                  "Job completed and payment processed successfully:",
-                  {
-                    jobId: updatedJob._id,
-                    newStatus: updatedJob.status,
-                    paymentAmount: job.price,
-                  }
-                );
-
-                Alert.alert(
-                  "Job Completed!",
-                  `The job has been marked as completed and $${job.price} has been transferred to the worker. Thank you for using LocalHeroes!`,
-                  [{ text: "OK" }]
-                );
-              } catch (error: any) {
-                console.error("Error completing job and processing payment:", {
-                  errorType: error?.constructor?.name,
-                  errorMessage: error?.message,
-                  errorResponse: error?.response?.data,
-                  errorStatus: error?.response?.status,
-                  jobId: job._id,
-                });
-
-                const errorMessage =
-                  error?.response?.data?.message ||
-                  error?.message ||
-                  "Failed to complete job and process payment";
-                Alert.alert("Error", errorMessage);
-              }
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      console.error("Unexpected error in job completion:", error);
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
-    } finally {
-      setConfirmingCompletion(false);
-    }
-  };
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case TaskStatus.OPEN:
+    switch (status.toLowerCase()) {
+      case "open":
         return "#28A745";
-      case TaskStatus.IN_PROGRESS:
+      case "in_progress":
         return "#FFC107";
-      case TaskStatus.COMPLETED:
+      case "completed":
         return "#6C757D";
-      case TaskStatus.CANCELLED:
+      case "cancelled":
         return "#DC3545";
-      case TaskStatus.PAID:
-        return "#17A2B8";
       default:
         return "#6C757D";
     }
@@ -455,8 +413,9 @@ export default function JobDetailScreen() {
         return "#666";
     }
   };
+
   // Determine if the job belongs to the current user
-  const isUserJob = user?._id === job?.postedBy?._id;
+  const isUserJob = user?.email === job?.postedBy?.email;
 
   const handleViewPosterProfile = () => {
     if (!jobPoster) {
@@ -470,11 +429,14 @@ export default function JobDetailScreen() {
     // Navigate using email if available, otherwise use ID
     const profileIdentifier = jobPoster.email || jobPoster._id;
     if (profileIdentifier) {
-      router.push(
-        `/profile?${jobPoster.email ? "email" : "id"}=${encodeURIComponent(
-          profileIdentifier
-        )}`
-      );
+      // Use the root profile route for viewing other users' profiles
+      const params = jobPoster.email
+        ? { email: profileIdentifier }
+        : { id: profileIdentifier };
+      router.push({
+        pathname: "/profile",
+        params,
+      });
     } else {
       Alert.alert(
         "Profile Unavailable",
@@ -514,7 +476,6 @@ export default function JobDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
       {/* Custom Header with Actions */}
       <View style={styles.headerActions}>
         <TouchableOpacity
@@ -544,6 +505,7 @@ export default function JobDetailScreen() {
           )}
         </View>
       </View>
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -569,6 +531,7 @@ export default function JobDetailScreen() {
               <Text style={styles.statusText}>{job.status.toUpperCase()}</Text>
             </View>
           </View>
+
           <View style={styles.jobMeta}>
             <View style={styles.metaItem}>
               <Ionicons name="location-outline" size={16} color="#666" />
@@ -591,26 +554,13 @@ export default function JobDetailScreen() {
               <Text style={styles.metaText}>{job.category}</Text>
             </View>
           </View>
+
           {/* Price */}
           <View style={styles.priceContainer}>
             <Text style={styles.priceLabel}>Payment</Text>
             <Text style={styles.price}>€{job.price}</Text>
           </View>
         </View>
-
-        {/* Job Completion Notice for Employers */}
-        {isUserJob && job.status === TaskStatus.COMPLETED && (
-          <View style={styles.completionNotice}>
-            <View style={styles.completionNoticeHeader}>
-              <Ionicons name="checkmark-circle" size={24} color="#28A745" />
-              <Text style={styles.completionNoticeTitle}>Job Completed!</Text>
-            </View>
-            <Text style={styles.completionNoticeText}>
-              The worker has marked this job as completed. Please review the
-              work and confirm completion to transfer payment.
-            </Text>
-          </View>
-        )}
         {/* Experience Level */}
         {job.experienceLevel && (
           <View style={styles.section}>
@@ -655,120 +605,65 @@ export default function JobDetailScreen() {
         {/* Employer Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Posted By</Text>
-          <TouchableOpacity
-            style={styles.employerCard}
-            onPress={() => {
-              // Prioritize jobPoster details, fallback to job.postedBy
-              const posterToNavigate = jobPoster || job?.postedBy;
-
-              if (!posterToNavigate) {
-                Alert.alert(
-                  "Profile Unavailable",
-                  "Unable to retrieve poster profile at this time."
-                );
-                return;
-              }
-
-              // Prefer email for navigation, fallback to ID
-              const profileIdentifier =
-                posterToNavigate.email || posterToNavigate._id;
-              const paramKey = posterToNavigate.email ? "email" : "id";
-
-              console.log("Navigating to profile with:", {
-                identifier: profileIdentifier,
-                paramKey: paramKey,
-              });
-
-              router.push(
-                `/profile?${paramKey}=${encodeURIComponent(profileIdentifier)}`
-              );
-            }}
-          >
-            {/* Avatar */}
-            <View style={styles.employerAvatar}>
-              <Text style={styles.employerInitials}>
-                {(jobPoster?.firstName || job?.postedBy?.firstName || "")[0]}
-                {(jobPoster?.lastName || job?.postedBy?.lastName || "")[0]}
-              </Text>
-            </View>
-
-            {/* Poster Info */}
-            <View style={styles.employerInfo}>
-              <Text style={styles.employerName}>
-                {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}
-                {jobPoster?.lastName || job?.postedBy?.lastName || ''}
-              </Text>
-              <Text style={styles.employerEmail}>
-                {jobPoster?.email ||
-                  job?.postedBy?.email ||
-                  "No email available"}
-              </Text>
-
-              {(jobPoster?.skills || job?.postedBy?.skills) && (
-                <Text style={styles.employerSkills}>
-                  Skills:{" "}
-                  {(jobPoster?.skills || job?.postedBy?.skills || []).join(
-                    ", "
-                  )}
+          {jobPoster ? (
+            <TouchableOpacity
+              style={styles.posterProfile}
+              onPress={handleViewPosterProfile}
+            >
+              <Image
+                source={{
+                  uri:
+                    jobPoster.profilePicture ||
+                    "https://randomuser.me/api/portraits/men/32.jpg",
+                }}
+                style={styles.posterImage}
+              />
+              <View style={styles.posterInfo}>
+                <Text style={styles.posterName}>
+                  {jobPoster.firstName} {jobPoster.lastName}
                 </Text>
-              )}
-
-              {/* New View Profile Button */}
-              <TouchableOpacity
-                style={styles.viewProfileButton}
-                onPress={() => {
-                  // Prioritize jobPoster details, fallback to job.postedBy
-                  const posterToNavigate = jobPoster || job?.postedBy;
-
-                  if (!posterToNavigate) {
-                    Alert.alert(
-                      "Profile Unavailable",
-                      "Unable to retrieve poster profile at this time."
-                    );
-                    return;
-                  }
-
-                  // Prefer email for navigation, fallback to ID
-                  const profileIdentifier =
-                    posterToNavigate.email || posterToNavigate._id;
-                  const paramKey = posterToNavigate.email ? "email" : "id";
-
-                  console.log("Navigating to profile with:", {
-                    identifier: profileIdentifier,
-                    paramKey: paramKey,
-                  });
-
-                  router.push(
-                    `/profile?${paramKey}=${encodeURIComponent(
-                      profileIdentifier
-                    )}`
-                  );
-                }}
-              >
-                <Text style={styles.viewProfileButtonText}>View Profile</Text>
-              </TouchableOpacity>
-              {/* Add Write Review Button */}
-              <TouchableOpacity
-                style={styles.writeReviewButton}
-                onPress={() => {
-                  const posterToNavigate = jobPoster || job?.postedBy;
-                  if (!posterToNavigate) {
-                    Alert.alert(
-                      "Profile Unavailable",
-                      "Unable to retrieve poster profile at this time."
-                    );
-                    return;
-                  }
-                  router.push({
-                    pathname: "/write-review",
-                    params: { reviewedUserId: posterToNavigate._id },
-                  });
-                }}
-              >
-                <Text style={styles.writeReviewButtonText}>Write Review</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+                <View style={styles.reviewStats}>
+                  <View style={styles.ratingContainer}>
+                    {[...Array(5)].map((_, i) => {
+                      const userReviews: Review[] = reviews.filter(
+                        (r) => r.reviewedUserId === jobPoster._id
+                      );
+                      const averageRating =
+                        userReviews.length > 0
+                          ? Math.round(
+                              userReviews.reduce(
+                                (acc, review) => acc + (review.rating || 0),
+                                0
+                              ) / userReviews.length
+                            )
+                          : 0;
+                      return (
+                        <Ionicons
+                          key={i}
+                          name={i < averageRating ? "star" : "star-outline"}
+                          size={16}
+                          color="#FFD700"
+                        />
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.reviewCount}>
+                    {(() => {
+                      const userReviews: Review[] = reviews.filter(
+                        (r) => r.reviewedUserId === jobPoster._id
+                      );
+                      return `${userReviews.length} ${
+                        userReviews.length === 1 ? "review" : "reviews"
+                      }`;
+                    })()}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#666" />
+            </TouchableOpacity>
+          ) : (
+            <ActivityIndicator size="small" color="#0ca678" />
+          )}
         </View>
         {/* Job Statistics */}
         <View style={styles.section}>
@@ -777,17 +672,12 @@ export default function JobDetailScreen() {
             <View style={styles.statItem}>
               <Ionicons name="eye-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Views</Text>
-              <Text style={styles.statValue}>{(job as any).views ?? 0}</Text>
+              <Text style={styles.statValue}>{job.views ?? 0}</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Applicants</Text>
-              <Text style={styles.statValue}>
-                {(job as any).applicants?.length ?? 0}
-              </Text>
-              <Text style={styles.statValue}>
-                {job.applicants?.length ?? 0}
-              </Text>
+              <Text style={styles.statValue}>{job.applicants ?? 0}</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="calendar-outline" size={20} color="#666" />
@@ -865,8 +755,10 @@ export default function JobDetailScreen() {
               {/* Poster Info */}
               <View style={styles.employerInfo}>
                 <Text style={styles.employerName}>
-                  {jobPoster?.firstName || job?.postedBy?.firstName || 'Unknown'}
-                  {jobPoster?.lastName || job?.postedBy?.lastName || ''}
+                  {jobPoster?.firstName ||
+                    job?.postedBy?.firstName ||
+                    "Unknown"}{" "}
+                  {jobPoster?.lastName || job?.postedBy?.lastName || ""}
                 </Text>
                 <Text style={styles.employerEmail}>
                   {jobPoster?.email ||
@@ -886,35 +778,11 @@ export default function JobDetailScreen() {
           </View>
         )}
       </ScrollView>
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsContainer}>
-        {isUserJob && job.status === TaskStatus.IN_PROGRESS && (
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              { backgroundColor: "#28A745", borderColor: "#28A745" },
-            ]}
-            onPress={handleCompleteAndPay}
-            disabled={confirmingCompletion}
-          >
-            {confirmingCompletion ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={20}
-                  color="#FFFFFF"
-                />
-                <Text style={[styles.primaryButtonText, { color: "#FFFFFF" }]}>
-                  Mark Complete & Pay
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
 
-        {isUserJob && job.status !== TaskStatus.IN_PROGRESS && (
+      {/* Action Buttons */}
+
+      <View style={styles.actionButtonsContainer}>
+        {isUserJob && (
           <View
             style={[
               styles.primaryButton,
@@ -943,15 +811,13 @@ export default function JobDetailScreen() {
           </TouchableOpacity>
         )}
 
-        {!isUserJob && (
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleContact}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color="#0ca678" />
-            <Text style={styles.secondaryButtonText}>Contact</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleContact}
+        >
+          <Ionicons name="chatbubble-outline" size={20} color="#0ca678" />
+          <Text style={styles.secondaryButtonText}>Contact</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -960,8 +826,7 @@ export default function JobDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-
-    backgroundColor: "#fff",
+    backgroundColor: "#000",
   },
   loadingContainer: {
     flex: 1,
@@ -991,33 +856,21 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  customHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
-  },
-  headerButton: {
-    padding: 8,
-  },
   headerActions: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     backgroundColor: "#000",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   headerActionRight: {
     flexDirection: "row",
-    alignItems: "center",
+    gap: 16,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: "#f5f5f5",
   },
   jobHeader: {
     backgroundColor: "white",
@@ -1260,10 +1113,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   shareButton: {
-    marginRight: 16,
+    padding: 8,
   },
   editButton: {
-    marginLeft: 16,
+    padding: 8,
   },
   errorButtonText: {
     color: "#DC3545",
@@ -1280,34 +1133,37 @@ const styles = StyleSheet.create({
   posterProfile: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    padding: 12,
   },
-  posterAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
-  },
-  posterAvatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.light.tint,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  posterAvatarText: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "bold",
+  posterImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
   },
   posterInfo: {
     flex: 1,
   },
   posterName: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  reviewStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: "#666",
   },
   viewProfileButton: {
     backgroundColor: "#2A9D8F",
@@ -1318,44 +1174,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   viewProfileButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  completionNotice: {
-    backgroundColor: "#F8FFF8",
-    borderLeftWidth: 4,
-    borderLeftColor: "#28A745",
-    padding: 16,
-    margin: 16,
-    borderRadius: 8,
-  },
-  completionNoticeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  completionNoticeTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#28A745",
-    marginLeft: 8,
-  },
-  completionNoticeText: {
-    fontSize: 14,
-    color: "#155724",
-    lineHeight: 20,
-  },
-  writeReviewButton: {
-    backgroundColor: "#2A9D8F",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-    marginTop: 8,
-  },
-  writeReviewButtonText: {
     color: "white",
     fontSize: 14,
     fontWeight: "600",
