@@ -11,7 +11,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { authService } from '../../services/api';
-import { Task, PopulatedTask } from '../../types/task';
+import { Task, PopulatedTask, TaskStatus } from '../../types/task';
 import { User } from '../../types/user';
 
 type Applicant = User;
@@ -28,7 +28,6 @@ const ManageJobScreen = () => {
     if (!id) return;
     try {
       setLoading(true);
-      // This endpoint needs to be created in api.ts
       const fetchedTask = await authService.getTaskWithApplicants(id);
       setTask(fetchedTask);
       setApplicants(fetchedTask.applicants || []);
@@ -48,10 +47,8 @@ const ManageJobScreen = () => {
   const handleAccept = async (applicantId: string) => {
     if (!id) return;
     try {
-      // This endpoint needs to be created in api.ts
       await authService.acceptApplicant(id, applicantId);
       Alert.alert('Success', 'Applicant has been accepted.');
-      // Refresh data
       fetchTaskDetails();
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Could not accept the applicant.');
@@ -61,13 +58,22 @@ const ManageJobScreen = () => {
   const handleDeny = async (applicantId: string) => {
     if (!id) return;
     try {
-      // This endpoint needs to be created in api.ts
       await authService.denyApplicant(id, applicantId);
       Alert.alert('Success', 'Applicant has been denied.');
-      // Refresh data
       fetchTaskDetails();
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Could not deny the applicant.');
+    }
+  };
+
+  const handleConfirmCompletion = async () => {
+    if (!id) return;
+    try {
+      await authService.confirmCompletion(id);
+      Alert.alert('Success', 'You have confirmed the job completion and released the funds.');
+      fetchTaskDetails();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not confirm the job completion.');
     }
   };
 
@@ -98,35 +104,58 @@ const ManageJobScreen = () => {
           <Text style={styles.title}>{task.title}</Text>
           <Text style={styles.description}>{task.description}</Text>
           <Text style={styles.price}>Price: ${task.price}</Text>
+          <Text style={styles.status}>Status: {task.status}</Text>
         </View>
       )}
 
-      <Text style={styles.applicantsHeader}>Applicants</Text>
-      {applicants.length > 0 ? (
-        <FlatList
-          data={applicants}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <View style={styles.applicantCard}>
-              <View>
-                <Text style={styles.applicantName}>
-                  {item.firstName} {item.lastName}
-                </Text>
-                <Text style={styles.applicantEmail}>{item.email}</Text>
-              </View>
-              <View style={styles.buttonsContainer}>
-                <TouchableOpacity style={[styles.button, styles.acceptButton]} onPress={() => handleAccept(item._id)}>
-                  <Text style={styles.buttonText}>Accept</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.denyButton]} onPress={() => handleDeny(item._id)}>
-                  <Text style={styles.buttonText}>Deny</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+      {task && task.status === TaskStatus.COMPLETED && (
+        <View style={styles.confirmationContainer}>
+          <Text style={styles.confirmationText}>
+            The employee has marked this job as completed. Please review their work and release the funds.
+          </Text>
+          <TouchableOpacity style={[styles.button, styles.confirmButton]} onPress={handleConfirmCompletion}>
+            <Text style={styles.buttonText}>Confirm Completion & Release Funds</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {task && (task.status === TaskStatus.OPEN || task.status === TaskStatus.IN_PROGRESS) && (
+        <>
+          <Text style={styles.applicantsHeader}>Applicants</Text>
+          {applicants.length > 0 ? (
+            <FlatList
+              data={applicants}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.applicantCard}>
+                  <View>
+                    <Text style={styles.applicantName}>
+                      {item.firstName} {item.lastName}
+                    </Text>
+                    <Text style={styles.applicantEmail}>{item.email}</Text>
+                  </View>
+                  <View style={styles.buttonsContainer}>
+                    <TouchableOpacity
+                      style={[styles.button, styles.acceptButton]}
+                      onPress={() => handleAccept(item.id)}
+                    >
+                      <Text style={styles.buttonText}>Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, styles.denyButton]} onPress={() => handleDeny(item.id)}>
+                      <Text style={styles.buttonText}>Deny</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            />
+          ) : (
+            <Text style={styles.noApplicantsText}>No applicants yet.</Text>
           )}
-        />
-      ) : (
-        <Text style={styles.noApplicantsText}>No applicants yet.</Text>
+        </>
+      )}
+
+      {task && (task.status === TaskStatus.CANCELLED || task.status === TaskStatus.PAID) && (
+        <Text style={styles.jobClosedText}>This job is closed.</Text>
       )}
     </SafeAreaView>
   );
@@ -165,6 +194,11 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  status: {
+    fontSize: 16,
+    marginTop: 10,
     fontWeight: 'bold',
   },
   applicantsHeader: {
@@ -211,6 +245,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     color: '#777',
+  },
+  confirmationContainer: {
+    padding: 20,
+    backgroundColor: '#e6f7ff',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmationText: {
+    textAlign: 'center',
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  confirmButton: {
+    backgroundColor: '#28a745',
+  },
+  jobClosedText: {
+    textAlign: 'center',
+    fontSize: 18,
+    color: '#777',
+    marginTop: 30,
   },
 });
 

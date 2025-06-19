@@ -76,10 +76,7 @@ const MyActiveJobsScreen = () => {
    * Navigates to the details page for a specific job.
    */
   const handleJobPress = (jobId: string) => {
-    // Example: router.push(`/jobs/${jobId}`);
-    console.log(`Navigating to job details for: ${jobId}`);
-    Alert.alert('Job Details', `Navigating to details for job ID: ${jobId}`);
-    // You would navigate to a detailed job view here
+    router.push(`/jobs/active/${jobId}`);
   };
 
   // Render loading state

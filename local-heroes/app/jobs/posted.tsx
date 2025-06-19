@@ -1,8 +1,8 @@
 // local-heroes/app/jobs/posted.tsx
 // This screen displays the jobs that the logged-in user has posted.
-// It will fetch job data and present it in a scrollable list.
+// It will fetch job data and present it in a scrollable list with tabs for active and past jobs.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons'; // For icons in job items
 // CONFIRMED CORRECTED PATHS by User:
 import { useAuth } from '../././context/AuthContext';
 import { authService } from '../././services/api';
-import { Task } from '../types/task';
+import { Task, TaskStatus } from '../types/task';
 
 // Placeholder for User interface.
 // FIX: Confirmed 'id' is the property name for the user's ID
@@ -40,11 +40,12 @@ const MyPostedJobsScreen = () => {
   const [postedJobs, setPostedJobs] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'Active' | 'Past'>('Active');
 
   // Moved fetchPostedJobs outside useEffect to be accessible for retry button
   // Using React.useCallback to prevent unnecessary re-creations of the function
   // It's still dependent on 'user' and other state setters
-  const fetchPostedJobs = React.useCallback(async () => {
+  const fetchPostedJobs = useCallback(async () => {
     // FIX: Changed user?._id to user?.id to resolve TypeScript error
     if (!user?.id) {
       // Use user.id as the user identifier
@@ -74,6 +75,14 @@ const MyPostedJobsScreen = () => {
     fetchPostedJobs();
   }, [fetchPostedJobs]); // Dependency for useEffect: re-run when fetchPostedJobs itself changes (due to its dependencies)
 
+  const filteredJobs = postedJobs.filter((job) => {
+    if (activeTab === 'Active') {
+      return job.status === TaskStatus.OPEN || job.status === TaskStatus.IN_PROGRESS;
+    } else {
+      return job.status === TaskStatus.COMPLETED || job.status === TaskStatus.CANCELLED;
+    }
+  });
+
   // Render loading state
   if (loading) {
     return (
@@ -102,13 +111,15 @@ const MyPostedJobsScreen = () => {
   }
 
   // Render empty state
-  if (postedJobs.length === 0) {
+  if (filteredJobs.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
           <Ionicons name="document-text-outline" size={80} color="#CCC" />
-          <Text style={styles.emptyText}>No Posted Jobs</Text>
-          <Text style={styles.emptyDescription}>You haven't posted any jobs yet. Start helping your community!</Text>
+          <Text style={styles.emptyText}>No {activeTab} Jobs</Text>
+          <Text style={styles.emptyDescription}>
+            You haven't posted any {activeTab} jobs yet. Start helping your community!
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -117,8 +128,23 @@ const MyPostedJobsScreen = () => {
   // Render list of posted jobs
   return (
     <SafeAreaView style={styles.safeArea}>
+      <Text style={styles.title}>My Posted Jobs</Text>
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'Active' && styles.activeTab]}
+          onPress={() => setActiveTab('Active')}
+        >
+          <Text style={styles.tabText}>Active</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'Past' && styles.activeTab]}
+          onPress={() => setActiveTab('Past')}
+        >
+          <Text style={styles.tabText}>Past</Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
-        data={postedJobs}
+        data={filteredJobs}
         keyExtractor={(item) => item._id}
         ListHeaderComponent={<Text style={styles.title}>My Posted Jobs</Text>}
         contentContainerStyle={styles.listContentContainer}
@@ -132,6 +158,7 @@ const MyPostedJobsScreen = () => {
               <Text style={styles.jobDescription} numberOfLines={2}>
                 {item.description}
               </Text>
+              <Text style={styles.jobStatus}>Status: {item.status}</Text>
             </View>
             <TouchableOpacity style={styles.manageButton} onPress={() => router.push(`/jobs/manage/${item._id}`)}>
               <Text style={styles.manageButtonText}>Manage</Text>
@@ -154,6 +181,25 @@ const styles = StyleSheet.create({
     color: '#333',
     padding: 16,
     backgroundColor: '#fff',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+  },
+  tab: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginHorizontal: 10,
+  },
+  activeTab: {
+    backgroundColor: '#007bff',
+  },
+  tabText: {
+    color: '#333',
+    fontWeight: 'bold',
   },
   centerContainer: {
     flex: 1,
@@ -231,6 +277,11 @@ const styles = StyleSheet.create({
   jobDescription: {
     fontSize: 14,
     color: '#666',
+  },
+  jobStatus: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
   },
   manageButton: {
     backgroundColor: '#007bff',
