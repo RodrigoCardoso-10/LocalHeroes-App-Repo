@@ -28,6 +28,8 @@ export default function PostJobScreen() {
   const [mainTasks, setMainTasks] = useState('');
   const [minimumRequirements, setMinimumRequirements] = useState('');
   const [tags, setTags] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
 
   // Load existing job details if editing
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function PostJobScreen() {
         try {
           setIsEditing(true);
           const jobDetails = await authService.getTask(jobId as string);
-          
+
           // Populate form with existing job details
           setJobTitle(jobDetails.title);
           setCategory(jobDetails.category || '');
@@ -44,22 +46,24 @@ export default function PostJobScreen() {
           setLocation(jobDetails.location || '');
           setPayment(jobDetails.price.toString());
           setDescription(jobDetails.description);
-          
+
           // Parse description to extract main tasks and requirements
           const descriptionParts: string[] = jobDetails.description.split('\n\n');
           if (descriptionParts.length > 1) {
             const mainTasksIndex = descriptionParts.findIndex((part: string) => part.includes('Main Tasks:'));
-            const requirementsIndex = descriptionParts.findIndex((part: string) => part.includes('Minimum Requirements:'));
-            
+            const requirementsIndex = descriptionParts.findIndex((part: string) =>
+              part.includes('Minimum Requirements:')
+            );
+
             if (mainTasksIndex !== -1) {
               setMainTasks(descriptionParts[mainTasksIndex].replace('Main Tasks:', '').trim());
             }
-            
+
             if (requirementsIndex !== -1) {
               setMinimumRequirements(descriptionParts[requirementsIndex].replace('Minimum Requirements:', '').trim());
             }
           }
-          
+
           setTags(jobDetails.tags?.join(', ') || '');
         } catch (error) {
           console.error('Failed to load job details:', error);
@@ -89,6 +93,14 @@ export default function PostJobScreen() {
       Alert.alert('Authentication Error', 'You must be logged in to post a job');
       return;
     }
+    if (!latitude.trim() || isNaN(Number(latitude))) {
+      Alert.alert('Validation Error', 'Please enter a valid latitude');
+      return;
+    }
+    if (!longitude.trim() || isNaN(Number(longitude))) {
+      Alert.alert('Validation Error', 'Please enter a valid longitude');
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -99,7 +111,13 @@ export default function PostJobScreen() {
         description: `${description.trim()}${mainTasks.trim() ? '\n\nMain Tasks:\n' + mainTasks.trim() : ''}${
           minimumRequirements.trim() ? '\n\nMinimum Requirements:\n' + minimumRequirements.trim() : ''
         }`,
-        location: location.trim() || undefined,
+        location: {
+          address: location.trim(),
+          point: {
+            type: 'Point',
+            coordinates: [Number(longitude), Number(latitude)],
+          },
+        },
         price: Number(payment),
         category: category.trim() || undefined,
         tags: tags.trim()
@@ -123,11 +141,9 @@ export default function PostJobScreen() {
           ]);
         } catch (updateError: any) {
           console.error('Error updating job:', updateError);
-          Alert.alert(
-            'Update Error', 
-            updateError.message || 'Failed to update job. Please try again.', 
-            [{ text: 'OK' }]
-          );
+          Alert.alert('Update Error', updateError.message || 'Failed to update job. Please try again.', [
+            { text: 'OK' },
+          ]);
           return;
         }
       } else {
@@ -141,11 +157,7 @@ export default function PostJobScreen() {
           ]);
         } catch (createError: any) {
           console.error('Error creating job:', createError);
-          Alert.alert(
-            'Post Error', 
-            createError.message || 'Failed to post job. Please try again.', 
-            [{ text: 'OK' }]
-          );
+          Alert.alert('Post Error', createError.message || 'Failed to post job. Please try again.', [{ text: 'OK' }]);
           return;
         }
       }
@@ -192,7 +204,7 @@ export default function PostJobScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
@@ -200,9 +212,7 @@ export default function PostJobScreen() {
         <View style={styles.formContainer}>
           <Text style={styles.title}>{isEditing ? 'Edit Job' : 'Post a Job'}</Text>
           <Text style={styles.subtitle}>
-            {isEditing 
-              ? 'Update the details of your existing job post' 
-              : 'Nish dis faucibus pison lacus tristique'}
+            {isEditing ? 'Update the details of your existing job post' : 'Nish dis faucibus pison lacus tristique'}
           </Text>
           <PlaceholderInput
             label="Job Title *"
@@ -227,6 +237,20 @@ export default function PostJobScreen() {
             value={location}
             onChangeText={setLocation}
             placeholder="e.g. Amsterdam, Utrecht..."
+          />
+          <PlaceholderInput
+            label="Latitude *"
+            value={latitude}
+            onChangeText={setLatitude}
+            keyboardType="numeric"
+            placeholder="e.g. 52.3676"
+          />
+          <PlaceholderInput
+            label="Longitude *"
+            value={longitude}
+            onChangeText={setLongitude}
+            keyboardType="numeric"
+            placeholder="e.g. 4.9041"
           />
           <PlaceholderInput
             label="Payment (€) *"
@@ -270,9 +294,7 @@ export default function PostJobScreen() {
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.postButtonText}>
-                {isEditing ? 'Update Job' : 'Post Job'}
-              </Text>
+              <Text style={styles.postButtonText}>{isEditing ? 'Update Job' : 'Post Job'}</Text>
             )}
           </TouchableOpacity>
           <Text style={styles.noteText}>* Required fields. Your job will be visible to all users.</Text>

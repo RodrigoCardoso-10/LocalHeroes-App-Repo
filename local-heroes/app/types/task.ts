@@ -3,6 +3,7 @@ export enum TaskStatus {
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
+  PAID = 'PAID',
 }
 
 // Task-related types and interfaces
@@ -67,7 +68,7 @@ export interface TaskFilters {
   category?: string;
   minPrice?: number;
   maxPrice?: number;
-  status?: string;
+  status?: TaskStatus;
   datePosted?: string;
   tags?: string[];
   experienceLevel?: string;

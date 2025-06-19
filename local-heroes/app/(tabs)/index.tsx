@@ -7,7 +7,7 @@ import JobCard from '../components/JobCard';
 import { Images } from '../constants/Images';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
-import { Task } from '../types/task';
+import { Task, TaskStatus } from '../types/task';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -45,7 +45,11 @@ export default function HomeScreen() {
   const loadRecentJobs = async () => {
     try {
       setLoading(true);
-      const response = await authService.getTasks({ page: 1, limit: 5 });
+      const response = await authService.getTasks({
+        page: 1,
+        limit: 5,
+        status: TaskStatus.OPEN,
+      });
       setRecentJobs(response.tasks);
     } catch (error) {
       console.error('Failed to load recent jobs:', error);

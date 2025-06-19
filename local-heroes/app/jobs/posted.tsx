@@ -79,7 +79,9 @@ const MyPostedJobsScreen = () => {
     if (activeTab === 'Active') {
       return job.status === TaskStatus.OPEN || job.status === TaskStatus.IN_PROGRESS;
     } else {
-      return job.status === TaskStatus.COMPLETED || job.status === TaskStatus.CANCELLED;
+      return (
+        job.status === TaskStatus.COMPLETED || job.status === TaskStatus.CANCELLED || job.status === TaskStatus.PAID
+      );
     }
   });
 
