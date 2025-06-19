@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Header from "../components/Header";
+import Header from "../components/Header";           
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
@@ -110,7 +110,21 @@ export default function PrivacyScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={styles.content}>
-          <Text style={styles.title}>Privacy & Security</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ marginRight: 8 }}
+            >
+              <Text style={{ fontSize: 18, color: "#0ca678" }}>{"< Back"}</Text>
+            </TouchableOpacity>
+            <Text style={styles.title}>Privacy & Security</Text>
+          </View>
           <Text style={styles.subtitle}>Change your password below</Text>
           <View style={styles.form}>
             <Text style={styles.label}>Old Password</Text>
