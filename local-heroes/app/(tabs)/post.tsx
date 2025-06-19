@@ -1,21 +1,29 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
-import { router, Redirect } from 'expo-router';
+import React from "react";
+import PostJobScreen from "../post-job";
+import { ScrollView, View, StyleSheet } from "react-native";
 
 export default function PostScreen() {
-  // Redirect to the post-job page
-  return <Redirect href="/post-job" />;
+  return (
+    <ScrollView 
+      style={styles.content}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      <PostJobScreen />
+      <View style={styles.bottomSpace} />
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
   },
-  text: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  contentContainer: {
+    paddingBottom: 32,
   },
-}); 
+  bottomSpace: {
+    height: 80,
+  },
+  // ... existing styles ...
+});

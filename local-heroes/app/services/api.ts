@@ -1,11 +1,13 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // Dynamically set baseURL for API
-let baseURL = 'http://127.0.0.1:3001';
+// let baseURL = 'http://127.0.0.1:3001';
+let baseURL = 'http://kochamcie.duckdns.org:3002'; // Default to production URL
 if (Platform.OS === 'android') {
-  baseURL = 'http://10.0.2.2:3001'; // Android emulator
+  // baseURL = 'http://10.0.2.2:3001'; // Android emulator
+  baseURL = 'http://kochamcie.duckdns.org:3002';
 }
 // For physical devices, use your machine's LAN IP, e.g. 'http://192.168.1.100:3001'
 
@@ -35,48 +37,49 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor for handling token refresh
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+let responseInterceptorId: number | null = null;
 
-    // If the error is 401 (Unauthorized) and we haven't already tried to refresh the token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // Try to refresh the token - use the same baseURL as the main API instance
-        console.log('Attempting to refresh token at:', `${baseURL}/auth/refresh`);
-        const refreshResponse = await axios.post(
-          `${baseURL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          }
-        );
-
-        // Store the new access token in SecureStore
-        if (refreshResponse.data && refreshResponse.data.accessToken) {
-          await SecureStore.setItemAsync('accessToken', refreshResponse.data.accessToken);
-        }
-
-        // If refresh successful, retry the original request
-        return api(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, redirect to login (handled by the auth context)
-        console.error('Token refresh failed:', refreshError);
-        // Clear the stored token on refresh failure
-        await SecureStore.deleteItemAsync('accessToken').catch((err) =>
-          console.error('Error clearing access token:', err)
-        );
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
+export const setupResponseInterceptor = (logout: () => void) => {
+  if (responseInterceptorId !== null) {
+    api.interceptors.response.eject(responseInterceptorId);
   }
-);
+
+  responseInterceptorId = api.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = error.config as AxiosRequestConfig & {
+        _retry?: boolean;
+      };
+
+      if (error.response?.status === 401 && originalRequest.url !== '/auth/logout' && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          console.log('Attempting to refresh token at:', `${baseURL}/auth/refresh`);
+          const refreshResponse = await axios.post(
+            `${baseURL}/auth/refresh`,
+            {},
+            {
+              withCredentials: true,
+            }
+          );
+
+          if (refreshResponse.data && refreshResponse.data.accessToken) {
+            await SecureStore.setItemAsync('accessToken', refreshResponse.data.accessToken);
+          }
+
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          logout();
+          return Promise.reject(refreshError);
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+};
 
 // Authentication services
 export const authService = {
@@ -190,23 +193,17 @@ export const authService = {
   logout: async () => {
     try {
       const response = await api.delete('/auth/logout');
-
-      // Clear the stored access token
       await SecureStore.deleteItemAsync('accessToken');
-
       return response.data;
     } catch (error: any) {
-      console.error('Logout error details:', error);
-      // Still try to clear the token even if the server request fails
       await SecureStore.deleteItemAsync('accessToken').catch((err) =>
         console.error('Error clearing access token:', err)
       );
-
       throw error.response?.data || { message: 'Logout failed' };
     }
   },
 
-  // Request password reset
+  // Password reset
   requestPasswordReset: async (email: string) => {
     try {
       const response = await api.post('/auth/password-reset', { email });
@@ -216,7 +213,6 @@ export const authService = {
     }
   },
 
-  // Reset password with token
   resetPassword: async (token: string, password: string) => {
     try {
       const response = await api.post('/auth/reset-password', { token, password });
@@ -225,7 +221,8 @@ export const authService = {
       throw error.response?.data || { message: 'Password reset failed' };
     }
   },
-  // Check if user is authenticated
+
+  // User
   checkAuth: async () => {
     try {
       const response = await api.get('/users/userdata');
@@ -233,84 +230,63 @@ export const authService = {
     } catch (error: any) {
       throw error.response?.data || { message: 'Authentication check failed' };
     }
-  }, // Update user profile
-  updateProfile: async (profileData: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    bio?: string;
-    skills?: string[];
-    profilePicture?: string;
-  }) => {
+  },
+
+  updateProfile: async (profileData: any) => {
     try {
       const response = await api.patch('/users/profile', profileData);
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || { message: 'Profile update failed' };
+      throw error.response?.data || { message: 'Failed to update profile' };
     }
   },
-
-  // Upload profile picture
-  uploadProfilePicture: async (imageUri: string, fileName: string = 'profile.jpg') => {
+  // Deposit funds
+  deposit: async (amount: number) => {
     try {
-      const formData = new FormData();
-      formData.append('profilePicture', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: fileName,
-      } as any);
-
-      const response = await api.post('/users/profile-picture', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.patch('/users/deposit', { amount });
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || { message: 'Profile picture upload failed' };
+      throw error.response?.data || { message: 'Failed to deposit funds' };
     }
   },
-  // Tasks/Jobs API methods
 
-  // Get all tasks with filtering
-  getTasks: async (filters?: {
-    search?: string;
-    location?: string;
-    category?: string;
-    minPrice?: number;
-    maxPrice?: number;
-    status?: string;
-    datePosted?: string;
-    tags?: string[];
-    experienceLevel?: string;
-    page?: number;
-    limit?: number;
-  }) => {
+  // Tasks
+  getTasks: async (filters: any) => {
     try {
-      const params = new URLSearchParams();
-
-      if (filters) {
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            if (Array.isArray(value)) {
-              params.append(key, value.join(','));
-            } else {
-              params.append(key, String(value));
-            }
-          }
-        });
-      }
-
-      const response = await api.get(`/tasks?${params.toString()}`);
+      const response = await api.get('/tasks', { params: filters });
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to fetch tasks' };
     }
   },
 
-  // Get filter counts
+  getTaskById: async (id: string) => {
+    try {
+      const response = await api.get(`/tasks/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch task' };
+    }
+  },
+
+  createTask: async (taskData: any) => {
+    try {
+      const response = await api.post('/tasks', taskData);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to create task' };
+    }
+  },
+
+  updateTask: async (id: string, taskData: any) => {
+    try {
+      const response = await api.patch(`/tasks/${id}`, taskData);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to update task' };
+    }
+  },
+
   getFilterCounts: async () => {
     try {
       const response = await api.get('/tasks/filter-counts');
@@ -320,58 +296,6 @@ export const authService = {
     }
   },
 
-  // Get single task by ID
-  getTask: async (id: string) => {
-    try {
-      const response = await api.get(`/tasks/${id}`);
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to fetch task' };
-    }
-  },
-
-  // Create new task
-  createTask: async (taskData: {
-    title: string;
-    description: string;
-    location?: string;
-    price: number;
-    dueDate?: string;
-    category?: string;
-    tags?: string[];
-    experienceLevel?: string;
-  }) => {
-    try {
-      const response = await api.post('/tasks', taskData);
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to create task' };
-    }
-  },
-
-  // Update task
-  updateTask: async (
-    id: string,
-    taskData: {
-      title?: string;
-      description?: string;
-      location?: string;
-      price?: number;
-      dueDate?: string;
-      category?: string;
-      tags?: string[];
-      experienceLevel?: string;
-    }
-  ) => {
-    try {
-      const response = await api.patch(`/tasks/${id}`, taskData);
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to update task' };
-    }
-  },
-
-  // Delete task
   deleteTask: async (id: string) => {
     try {
       const response = await api.delete(`/tasks/${id}`);
@@ -380,37 +304,64 @@ export const authService = {
       throw error.response?.data || { message: 'Failed to delete task' };
     }
   },
-  // Apply for task
   applyForTask: async (id: string) => {
     try {
-      const response = await api.patch(`/tasks/${id}/apply`);
+      console.log('Making apply request for task ID:', id);
+      // Send an empty body since the endpoint doesn't expect any data
+      const response = await api.patch(`/tasks/${id}/apply`, {});
       return response.data;
     } catch (error: any) {
+      console.error('Apply for task error:', {
+        taskId: id,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to apply for task' };
     }
   },
 
-  // Accept applicant (for job posters)
-  acceptApplicant: async (id: string, applicantId: string) => {
+  getTaskWithApplicants: async (id: string) => {
     try {
-      const response = await api.patch(`/tasks/${id}/accept-applicant`, { applicantId });
+      const response = await api.get(`/tasks/${id}/applicants`);
       return response.data;
     } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to fetch applicants' };
+    }
+  },
+  acceptApplicant: async (taskId: string, applicantId: string) => {
+    try {
+      console.log('Accepting applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/accept`, {});
+      return response.data;
+    } catch (error: any) {
+      console.error('Accept applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       throw error.response?.data || { message: 'Failed to accept applicant' };
     }
   },
-
-  // Accept task
-  acceptTask: async (id: string) => {
+  denyApplicant: async (taskId: string, applicantId: string) => {
     try {
-      const response = await api.patch(`/tasks/${id}/accept`);
+      console.log('Denying applicant:', { taskId, applicantId });
+      const response = await api.patch(`/tasks/${taskId}/applicants/${applicantId}/deny`, {});
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || { message: 'Failed to accept task' };
+      console.error('Deny applicant error:', {
+        taskId,
+        applicantId,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      throw error.response?.data || { message: 'Failed to deny applicant' };
     }
   },
 
-  // Complete task
   completeTask: async (id: string) => {
     try {
       const response = await api.patch(`/tasks/${id}/complete`);
@@ -420,7 +371,6 @@ export const authService = {
     }
   },
 
-  // Cancel task
   cancelTask: async (id: string) => {
     try {
       const response = await api.patch(`/tasks/${id}/cancel`);
@@ -430,10 +380,19 @@ export const authService = {
     }
   },
 
-  // Notifications API methods
-  getNotifications: async (limit = 50, offset = 0) => {
+  confirmCompletion: async (id: string) => {
     try {
-      const response = await api.get(`/notifications?limit=${limit}&offset=${offset}`);
+      const response = await api.patch(`/tasks/${id}/confirm-completion`);
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to confirm completion' };
+    }
+  },
+
+  // Notifications
+  getNotifications: async () => {
+    try {
+      const response = await api.get('/notifications');
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to fetch notifications' };
@@ -451,7 +410,7 @@ export const authService = {
 
   markAllNotificationsAsRead: async () => {
     try {
-      const response = await api.patch('/notifications/mark-all-read');
+      const response = await api.patch('/notifications/read-all');
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to mark all notifications as read' };
@@ -464,6 +423,83 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       throw error.response?.data || { message: 'Failed to delete notification' };
+    }
+  },
+
+  // Get user profile by ID or email
+  getUserProfile: async (identifier: string) => {
+    try {
+      console.log('Fetching user profile:', { identifier });
+
+      // Check if the identifier looks like an email
+      const isEmail = identifier.includes('@');
+
+      // Use the new backend endpoint for email lookups
+      const endpoints = isEmail
+        ? [`/users/by-email/${encodeURIComponent(identifier)}`]
+        : [`/users/profile/${identifier}`];
+
+      // Try each endpoint until one succeeds
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Attempting to fetch profile from endpoint: ${endpoint}`);
+
+          const response = await api.get(endpoint, {
+            timeout: 10000, // 10-second timeout
+            headers: {
+              'X-Request-Context': JSON.stringify({
+                source: 'mobile-app',
+                requestType: isEmail ? 'user-profile-by-email' : 'user-profile-by-id',
+                timestamp: new Date().toISOString(),
+              }),
+            },
+          });
+
+          console.log('User profile retrieved successfully:', {
+            identifier,
+            profileData: {
+              firstName: response.data.firstName,
+              lastName: response.data.lastName,
+              email: response.data.email,
+              profileFetchTimestamp: new Date().toISOString(),
+            },
+          });
+
+          return response.data;
+        } catch (endpointError: any) {
+          console.warn(`Failed to fetch profile from ${endpoint}:`, {
+            errorMessage: endpointError.message,
+            errorResponse: endpointError.response?.data,
+          });
+
+          // If it's the last endpoint, rethrow the error
+          if (endpoint === endpoints[endpoints.length - 1]) {
+            throw endpointError;
+          }
+        }
+      }
+
+      // This should never be reached, but TypeScript requires a return
+      throw new Error('Unable to retrieve user profile');
+    } catch (error: any) {
+      console.error('Failed to retrieve user profile:', {
+        identifier,
+        errorMessage: error.message,
+        errorResponse: error.response?.data,
+        fullError: JSON.stringify(error, null, 2),
+      });
+
+      // More detailed error handling
+      if (error.response) {
+        // Server responded with an error
+        throw new Error(error.response.data?.message || `Failed to retrieve profile. Status: ${error.response.status}`);
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error('No response from server. Please check your connection.');
+      } else {
+        // Something happened in setting up the request
+        throw new Error(`Profile retrieval error: ${error.message}`);
+      }
     }
   },
 };

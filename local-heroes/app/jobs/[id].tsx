@@ -1,46 +1,140 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
+  Alert,
   Linking,
+  RefreshControl,
+  Platform,
+  Image,
   Share,
   SafeAreaView,
-  RefreshControl,
-} from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { authService } from '../services/api';
-import { Task } from '../types/task';
-import Header from '../components/Header';
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { authService } from "../services/api";
+import { Task } from "../types/task";
+import { useAuth } from "../context/AuthContext";
+import { useReviews } from "../context/ReviewsContext";
+import type { Review } from "../context/ReviewsContext";
+import Colors from "../constants/Colors";
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
+  const { reviews } = useReviews();
   const [job, setJob] = useState<Task | null>(null);
+  const [jobPoster, setJobPoster] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load job details
+  // Load job details and poster profile
   useEffect(() => {
     loadJobDetails();
   }, [id]);
+
   const loadJobDetails = async () => {
     try {
       setLoading(true);
-      console.log('Loading job details for ID:', id);
-      console.log('ID type:', typeof id);
-      console.log('ID value:', JSON.stringify(id));
-      const response = await authService.getTask(id as string);
-      setJob(response);
+
+      console.log("Loading job details for ID:", id);
+
+      // Add more robust error handling for task retrieval
+      try {
+        const response = await authService.getTaskById(id as string);
+        setJob(response);
+
+        // Comprehensive logging of job and poster details
+        console.log("Job Details Received:", {
+          jobId: response._id,
+          jobTitle: response.title,
+          postedByInfo: response.postedBy
+            ? {
+                id: response.postedBy._id,
+                email: response.postedBy.email,
+                name: `${response.postedBy.firstName} ${response.postedBy.lastName}`,
+                skills: response.postedBy.skills,
+              }
+            : "No poster information",
+        });
+
+        // Fetch job poster's profile if available
+        if (response.postedBy && response.postedBy.email) {
+          try {
+            const posterProfile = await authService.getUserProfile(
+              response.postedBy.email
+            );
+
+            console.log("Poster Profile Retrieved:", {
+              posterId: posterProfile._id,
+              name: `${posterProfile.firstName} ${posterProfile.lastName}`,
+              email: posterProfile.email,
+              skills: posterProfile.skills,
+              profilePicture: posterProfile.profilePicture
+                ? "Available"
+                : "Not Available",
+            });
+
+            // Ensure email is preserved
+            const fullPosterProfile = {
+              ...posterProfile,
+              email: response.postedBy.email, // Preserve original email from job details
+            };
+
+            setJobPoster(fullPosterProfile);
+          } catch (profileError: any) {
+            console.warn("Failed to retrieve full poster profile:", {
+              email: response.postedBy.email,
+              errorMessage: profileError?.message,
+            });
+            // Fallback to basic poster information
+            setJobPoster({
+              ...response.postedBy,
+              email: response.postedBy.email,
+            });
+          }
+        }
+      } catch (taskError: any) {
+        console.error("Detailed task retrieval error:", {
+          errorType: taskError?.constructor?.name,
+          errorMessage: taskError?.message,
+          errorResponse: taskError?.response?.data,
+          errorStatus: taskError?.response?.status,
+        });
+
+        // More informative error handling
+        const errorMessage =
+          taskError?.response?.data?.message ||
+          taskError?.message ||
+          "Failed to load job details";
+
+        Alert.alert("Job Details Error", errorMessage, [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+          {
+            text: "Retry",
+            onPress: loadJobDetails,
+          },
+        ]);
+
+        return; // Exit the function to prevent further processing
+      }
     } catch (error: any) {
-      console.error('Failed to load job details:', error);
-      Alert.alert('Error', 'Failed to load job details');
+      console.error("Unexpected error in job details:", error);
+      Alert.alert(
+        "Unexpected Error",
+        "An unexpected error occurred. Please try again."
+      );
+
       router.back();
     } finally {
       setLoading(false);
@@ -50,11 +144,11 @@ export default function JobDetailScreen() {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      const response = await authService.getTask(id as string);
+      const response = await authService.getTaskById(id as string);
       setJob(response);
     } catch (error: any) {
-      console.error('Failed to refresh job details:', error);
-      Alert.alert('Error', 'Failed to refresh job details');
+      console.error("Failed to refresh job details:", error);
+      Alert.alert("Error", "Failed to refresh job details");
     } finally {
       setRefreshing(false);
     }
@@ -62,35 +156,185 @@ export default function JobDetailScreen() {
   const handleApply = async () => {
     if (!job) return;
 
+    // Additional pre-application checks
+    if (!user) {
+      Alert.alert(
+        "Authentication Required",
+        "You must be logged in to apply for a job.",
+        [
+          {
+            text: "Login",
+            onPress: () => router.push("/login"),
+          },
+        ]
+      );
+      return;
+    }
+
+    // Enhanced validation checks
+    const validationErrors = [];
+    if (!job.title || job.title.trim().length < 3) {
+      validationErrors.push("Invalid job title");
+    }
+    if (job.status.toLowerCase() !== "open") {
+      validationErrors.push("Job is not currently open for applications");
+    }
+    if (!job.price || job.price <= 0) {
+      validationErrors.push("Invalid job price");
+    }
+
+    if (validationErrors.length > 0) {
+      Alert.alert(
+        "Application Validation Failed",
+        validationErrors.join("\n"),
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     try {
       setApplying(true);
-      await authService.applyForTask(job._id);
+
+      // Comprehensive pre-application logging
+      console.log("Job Application Attempt:", {
+        jobId: job._id,
+        userId: user._id,
+        userEmail: user.email,
+        userRole: user.role,
+        jobTitle: job.title,
+        jobStatus: job.status,
+        jobLocation: job.location,
+        jobPrice: job.price,
+        applicationTimestamp: new Date().toISOString(),
+        // Add more diagnostic information
+        deviceInfo: {
+          platform: Platform.OS,
+          platformVersion: Platform.Version,
+        },
+      });
+
+      // Add timeout and retry mechanism
+      const applicationResponse = await Promise.race([
+        authService.applyForTask(job._id),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Application request timed out")),
+            10000
+          )
+        ),
+      ]);
+
+      // Log successful application
+      console.log("Job Application Successful:", {
+        jobId: job._id,
+        responseData: applicationResponse,
+      });
+
       Alert.alert(
-        'Application Sent!',
+        "Application Sent!",
         "Your application has been sent to the job poster. They will contact you if you're selected.",
-        [{ text: 'OK', onPress: () => router.back() }]
+
+        [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ]
       );
     } catch (error: any) {
-      console.error('Failed to apply for job:', error);
-      Alert.alert('Error', error.message || 'Failed to apply for job');
+      // Comprehensive error logging
+      console.error("Job Application Error:", {
+        errorType: error?.constructor?.name,
+        errorMessage: error?.message,
+        errorResponse: error?.response?.data,
+        errorStatus: error?.response?.status,
+        jobDetails: {
+          id: job._id,
+          title: job.title,
+          status: job.status,
+        },
+        userDetails: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+        },
+        timestamp: new Date().toISOString(),
+        fullError: JSON.stringify(error, null, 2),
+      });
+
+      // More detailed error handling
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to apply for job";
+
+      Alert.alert("Application Error", errorMessage, [
+        {
+          text: "OK",
+        },
+        {
+          text: "Show Details",
+          onPress: () =>
+            Alert.alert(
+              "Error Details",
+              JSON.stringify(
+                {
+                  message: errorMessage,
+                  jobId: job._id,
+                  userId: user._id,
+                  timestamp: new Date().toISOString(),
+                },
+                null,
+                2
+              )
+            ),
+        },
+      ]);
     } finally {
       setApplying(false);
     }
   };
 
+  const getLocationAddress = (location: any): string => {
+    if (!location) {
+      return "Unknown Location";
+    }
+    if (typeof location === "string") {
+      return location;
+    }
+    if (typeof location === "object") {
+      if (location.address) {
+        return location.address;
+      }
+      if (location.point?.coordinates) {
+        return `${location.point.coordinates[1].toFixed(
+          4
+        )}, ${location.point.coordinates[0].toFixed(4)}`;
+      }
+    }
+    return "Unknown Location";
+  };
+
   const handleContact = () => {
     if (!job?.postedBy) return;
 
-    Alert.alert('Contact Employer', 'How would you like to contact the employer?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Message', onPress: () => openMessage() },
-      { text: 'Email', onPress: () => openEmail() },
-    ]);
+    Alert.alert(
+      "Contact Employer",
+      "How would you like to contact the employer?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Message", onPress: () => openMessage() },
+        { text: "Email", onPress: () => openEmail() },
+      ]
+    );
   };
 
   const openMessage = () => {
     // Navigate to chat/message screen
-    Alert.alert('Feature Coming Soon', 'Direct messaging will be available soon!');
+    Alert.alert(
+      "Feature Coming Soon",
+      "Direct messaging will be available soon!"
+    );
   };
 
   const openEmail = () => {
@@ -98,7 +342,9 @@ export default function JobDetailScreen() {
       const subject = `Regarding: ${job.title}`;
       const body = `Hi,\n\nI'm interested in your job posting "${job.title}". I'd like to discuss the details.\n\nBest regards`;
       Linking.openURL(
-        `mailto:${job.postedBy.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+        `mailto:${job.postedBy.email}?subject=${encodeURIComponent(
+          subject
+        )}&body=${encodeURIComponent(body)}`
       );
     }
   };
@@ -108,11 +354,13 @@ export default function JobDetailScreen() {
 
     try {
       await Share.share({
-        message: `Check out this job: ${job.title} - €${job.price} in ${job.location}`,
+        message: `Check out this job: ${job.title} - €${
+          job.price
+        } in ${getLocationAddress(job.location)}`,
         title: job.title,
       });
     } catch (error) {
-      console.error('Failed to share:', error);
+      console.error("Failed to share:", error);
     }
   };
 
@@ -123,53 +371,83 @@ export default function JobDetailScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'open':
-        return '#28A745';
-      case 'in_progress':
-        return '#FFC107';
-      case 'completed':
-        return '#6C757D';
-      case 'cancelled':
-        return '#DC3545';
+      case "open":
+        return "#28A745";
+      case "in_progress":
+        return "#FFC107";
+      case "completed":
+        return "#6C757D";
+      case "cancelled":
+        return "#DC3545";
       default:
-        return '#6C757D';
+        return "#6C757D";
     }
   };
 
   const getExperienceLevelColor = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'no experience':
-        return '#E3F2FD';
-      case 'beginner':
-        return '#FFF3E0';
-      case 'intermediate':
-        return '#F3E5F5';
-      case 'expert':
-        return '#FFEBEE';
+      case "no experience":
+        return "#E3F2FD";
+      case "beginner":
+        return "#FFF3E0";
+      case "intermediate":
+        return "#F3E5F5";
+      case "expert":
+        return "#FFEBEE";
       default:
-        return '#F5F5F5';
+        return "#F5F5F5";
     }
   };
 
   const getExperienceLevelTextColor = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'no experience':
-        return '#1976D2';
-      case 'beginner':
-        return '#F57C00';
-      case 'intermediate':
-        return '#7B1FA2';
-      case 'expert':
-        return '#C62828';
+      case "no experience":
+        return "#1976D2";
+      case "beginner":
+        return "#F57C00";
+      case "intermediate":
+        return "#7B1FA2";
+      case "expert":
+        return "#C62828";
       default:
-        return '#666';
+        return "#666";
+    }
+  };
+
+  // Determine if the job belongs to the current user
+  const isUserJob = user?.email === job?.postedBy?.email;
+
+  const handleViewPosterProfile = () => {
+    if (!jobPoster) {
+      Alert.alert(
+        "Profile Unavailable",
+        "Unable to retrieve poster profile at this time."
+      );
+      return;
+    }
+
+    // Navigate using email if available, otherwise use ID
+    const profileIdentifier = jobPoster.email || jobPoster._id;
+    if (profileIdentifier) {
+      // Use the root profile route for viewing other users' profiles
+      const params = jobPoster.email
+        ? { email: profileIdentifier }
+        : { id: profileIdentifier };
+      router.push({
+        pathname: "/profile",
+        params,
+      });
+    } else {
+      Alert.alert(
+        "Profile Unavailable",
+        "Unable to retrieve poster profile at this time."
+      );
     }
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2A9D8F" />
           <Text style={styles.loadingText}>Loading job details...</Text>
@@ -181,12 +459,15 @@ export default function JobDetailScreen() {
   if (!job) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={60} color="#DC3545" />
           <Text style={styles.errorText}>Job not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
+
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.errorButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -195,25 +476,33 @@ export default function JobDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
-
       {/* Custom Header with Actions */}
-      <View style={styles.customHeader}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+      <View style={styles.headerActions}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={24} color="#333" />
+        <View style={styles.headerActionRight}>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+            <Ionicons name="share-outline" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton} onPress={toggleBookmark}>
-            <Ionicons
-              name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-              size={24}
-              color={bookmarked ? '#2A9D8F' : '#333'}
-            />
-          </TouchableOpacity>
+
+          {isUserJob && (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() =>
+                router.push({
+                  pathname: "/post-job",
+                  params: { jobId: job?._id },
+                })
+              }
+            >
+              <Ionicons name="pencil" size={24} color="white" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -221,14 +510,24 @@ export default function JobDetailScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2A9D8F']} tintColor="#2A9D8F" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#2A9D8F"]}
+            tintColor="#2A9D8F"
+          />
         }
       >
         {/* Job Header */}
         <View style={styles.jobHeader}>
           <View style={styles.titleRow}>
             <Text style={styles.jobTitle}>{job.title}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status) }]}>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: getStatusColor(job.status) },
+              ]}
+            >
               <Text style={styles.statusText}>{job.status.toUpperCase()}</Text>
             </View>
           </View>
@@ -236,15 +535,17 @@ export default function JobDetailScreen() {
           <View style={styles.jobMeta}>
             <View style={styles.metaItem}>
               <Ionicons name="location-outline" size={16} color="#666" />
-              <Text style={styles.metaText}>{job.location}</Text>
+              <Text style={styles.metaText}>
+                {getLocationAddress(job.location)}
+              </Text>
             </View>
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={16} color="#666" />
               <Text style={styles.metaText}>
-                {new Date(job.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
+                {new Date(job.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
                 })}
               </Text>
             </View>
@@ -264,8 +565,20 @@ export default function JobDetailScreen() {
         {job.experienceLevel && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Experience Required</Text>
-            <View style={[styles.experienceBadge, { backgroundColor: getExperienceLevelColor(job.experienceLevel) }]}>
-              <Text style={[styles.experienceText, { color: getExperienceLevelTextColor(job.experienceLevel) }]}>
+            <View
+              style={[
+                styles.experienceBadge,
+                {
+                  backgroundColor: getExperienceLevelColor(job.experienceLevel),
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.experienceText,
+                  { color: getExperienceLevelTextColor(job.experienceLevel) },
+                ]}
+              >
                 {job.experienceLevel}
               </Text>
             </View>
@@ -292,23 +605,65 @@ export default function JobDetailScreen() {
         {/* Employer Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Posted By</Text>
-          <View style={styles.employerCard}>
-            <View style={styles.employerAvatar}>
-              <Text style={styles.employerInitials}>
-                {job.postedBy?.firstName?.[0]}
-                {job.postedBy?.lastName?.[0]}
-              </Text>
-            </View>
-            <View style={styles.employerInfo}>
-              <Text style={styles.employerName}>
-                {job.postedBy?.firstName} {job.postedBy?.lastName}
-              </Text>
-              <Text style={styles.employerEmail}>{job.postedBy?.email}</Text>
-              {job.postedBy?.skills && job.postedBy.skills.length > 0 && (
-                <Text style={styles.employerSkills}>Skills: {job.postedBy.skills.join(', ')}</Text>
-              )}
-            </View>
-          </View>
+          {jobPoster ? (
+            <TouchableOpacity
+              style={styles.posterProfile}
+              onPress={handleViewPosterProfile}
+            >
+              <Image
+                source={{
+                  uri:
+                    jobPoster.profilePicture ||
+                    "https://randomuser.me/api/portraits/men/32.jpg",
+                }}
+                style={styles.posterImage}
+              />
+              <View style={styles.posterInfo}>
+                <Text style={styles.posterName}>
+                  {jobPoster.firstName} {jobPoster.lastName}
+                </Text>
+                <View style={styles.reviewStats}>
+                  <View style={styles.ratingContainer}>
+                    {[...Array(5)].map((_, i) => {
+                      const userReviews: Review[] = reviews.filter(
+                        (r) => r.reviewedUserId === jobPoster._id
+                      );
+                      const averageRating =
+                        userReviews.length > 0
+                          ? Math.round(
+                              userReviews.reduce(
+                                (acc, review) => acc + (review.rating || 0),
+                                0
+                              ) / userReviews.length
+                            )
+                          : 0;
+                      return (
+                        <Ionicons
+                          key={i}
+                          name={i < averageRating ? "star" : "star-outline"}
+                          size={16}
+                          color="#FFD700"
+                        />
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.reviewCount}>
+                    {(() => {
+                      const userReviews: Review[] = reviews.filter(
+                        (r) => r.reviewedUserId === jobPoster._id
+                      );
+                      return `${userReviews.length} ${
+                        userReviews.length === 1 ? "review" : "reviews"
+                      }`;
+                    })()}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#666" />
+            </TouchableOpacity>
+          ) : (
+            <ActivityIndicator size="small" color="#0ca678" />
+          )}
         </View>
         {/* Job Statistics */}
         <View style={styles.section}>
@@ -317,18 +672,22 @@ export default function JobDetailScreen() {
             <View style={styles.statItem}>
               <Ionicons name="eye-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Views</Text>
-              <Text style={styles.statValue}>24</Text>
+              <Text style={styles.statValue}>{job.views ?? 0}</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Applicants</Text>
-              <Text style={styles.statValue}>5</Text>
+              <Text style={styles.statValue}>{job.applicants ?? 0}</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="calendar-outline" size={20} color="#666" />
               <Text style={styles.statLabel}>Posted</Text>
               <Text style={styles.statValue}>
-                {Math.ceil((Date.now() - new Date(job.createdAt).getTime()) / (1000 * 60 * 60 * 24))}d ago
+                {Math.ceil(
+                  (Date.now() - new Date(job.createdAt).getTime()) /
+                    (1000 * 60 * 60 * 24)
+                )}
+                d ago
               </Text>
             </View>
           </View>
@@ -336,11 +695,17 @@ export default function JobDetailScreen() {
         {/* Safety Tips */}
         <View style={styles.section}>
           <View style={styles.safetyHeader}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#28A745" />
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={20}
+              color="#28A745"
+            />
             <Text style={styles.safetyTitle}>Safety Tips</Text>
           </View>
           <View style={styles.safetyTips}>
-            <Text style={styles.safetyTip}>• Always meet in a public place first</Text>
+            <Text style={styles.safetyTip}>
+              • Always meet in a public place first
+            </Text>
             <Text style={styles.safetyTip}>• Don't pay money upfront</Text>
             <Text style={styles.safetyTip}>• Trust your instincts</Text>
             <Text style={styles.safetyTip}>• Report suspicious activity</Text>
@@ -348,28 +713,110 @@ export default function JobDetailScreen() {
         </View>
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
+
+        {/* Job Poster Section */}
+        {(jobPoster || job?.postedBy) && (
+          <View style={styles.posterSection}>
+            <Text style={styles.sectionTitle}>Job Posted By</Text>
+            <TouchableOpacity
+              style={styles.employerCard}
+              onPress={() => {
+                // Prioritize jobPoster details, fallback to job.postedBy
+                const posterToNavigate = jobPoster || job?.postedBy;
+
+                if (!posterToNavigate) {
+                  Alert.alert(
+                    "Profile Unavailable",
+                    "Unable to retrieve poster profile at this time."
+                  );
+                  return;
+                }
+
+                // Prefer email for navigation, fallback to ID
+                const profileIdentifier =
+                  posterToNavigate.email || posterToNavigate._id;
+                const paramKey = posterToNavigate.email ? "email" : "id";
+
+                router.push(
+                  `/profile?${paramKey}=${encodeURIComponent(
+                    profileIdentifier
+                  )}`
+                );
+              }}
+            >
+              {/* Avatar */}
+              <View style={styles.employerAvatar}>
+                <Text style={styles.employerInitials}>
+                  {(jobPoster?.firstName || job?.postedBy?.firstName || "")[0]}
+                  {(jobPoster?.lastName || job?.postedBy?.lastName || "")[0]}
+                </Text>
+              </View>
+
+              {/* Poster Info */}
+              <View style={styles.employerInfo}>
+                <Text style={styles.employerName}>
+                  {jobPoster?.firstName ||
+                    job?.postedBy?.firstName ||
+                    "Unknown"}{" "}
+                  {jobPoster?.lastName || job?.postedBy?.lastName || ""}
+                </Text>
+                <Text style={styles.employerEmail}>
+                  {jobPoster?.email ||
+                    job?.postedBy?.email ||
+                    "No email available"}
+                </Text>
+                {(jobPoster?.skills || job?.postedBy?.skills) && (
+                  <Text style={styles.employerSkills}>
+                    Skills:{" "}
+                    {(jobPoster?.skills || job?.postedBy?.skills || []).join(
+                      ", "
+                    )}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* Action Buttons */}
-      <View style={styles.actionContainer}>
-        <TouchableOpacity style={styles.contactButton} onPress={handleContact}>
-          <Ionicons name="chatbubble-outline" size={20} color="#2A9D8F" />
-          <Text style={styles.contactButtonText}>Contact</Text>
-        </TouchableOpacity>
+
+      <View style={styles.actionButtonsContainer}>
+        {isUserJob && (
+          <View
+            style={[
+              styles.primaryButton,
+              {
+                backgroundColor: "white",
+                borderWidth: 2,
+                borderColor: "#2A9D8F",
+              },
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>Your Job Post</Text>
+          </View>
+        )}
+
+        {!isUserJob && (
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleApply}
+            disabled={applying}
+          >
+            {applying ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Apply Now</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
-          style={[styles.applyButton, applying && styles.applyButtonDisabled]}
-          onPress={handleApply}
-          disabled={applying || job.status !== 'open'}
+          style={styles.secondaryButton}
+          onPress={handleContact}
         >
-          {applying ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-              <Text style={styles.applyButtonText}>{job.status === 'open' ? 'Apply Now' : 'Not Available'}</Text>
-            </>
-          )}
+          <Ionicons name="chatbubble-outline" size={20} color="#0ca678" />
+          <Text style={styles.secondaryButtonText}>Contact</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -379,80 +826,69 @@ export default function JobDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#000",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 20,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 20,
   },
   errorText: {
     fontSize: 18,
-    color: '#DC3545',
-    textAlign: 'center',
+    color: "#DC3545",
+    textAlign: "center",
     marginTop: 16,
     marginBottom: 24,
   },
   backButton: {
-    backgroundColor: '#2A9D8F',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  customHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  headerButton: {
     padding: 8,
   },
   headerActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  headerActionRight: {
+    flexDirection: "row",
+    gap: 16,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: "#f5f5f5",
   },
   jobHeader: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: "#E5E5E5",
   },
   titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   jobTitle: {
     flex: 1,
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginRight: 12,
     lineHeight: 30,
   },
@@ -462,71 +898,71 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   statusText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   jobMeta: {
     marginBottom: 16,
   },
   metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   metaText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   priceContainer: {
-    backgroundColor: '#F1F7F6',
+    backgroundColor: "#F1F7F6",
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   priceLabel: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 4,
   },
   price: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2A9D8F',
+    fontWeight: "bold",
+    color: "#2A9D8F",
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 20,
     marginTop: 8,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 12,
   },
   experienceBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
   experienceText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   description: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#444',
+    color: "#444",
   },
   tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   tag: {
-    backgroundColor: '#F1F7F6',
+    backgroundColor: "#F1F7F6",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -535,134 +971,212 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
-    color: '#2A9D8F',
-    fontWeight: '500',
+    color: "#2A9D8F",
+    fontWeight: "500",
   },
   employerCard: {
-    flexDirection: 'row',
-    backgroundColor: '#F8F9FA',
+    flexDirection: "row",
+    backgroundColor: "#F8F9FA",
     padding: 16,
     borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   employerAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#2A9D8F',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#2A9D8F",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   employerInitials: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   employerInfo: {
     flex: 1,
   },
   employerName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
   },
   employerEmail: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 4,
   },
   employerSkills: {
     fontSize: 12,
-    color: '#2A9D8F',
+    color: "#2A9D8F",
   },
   statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
     marginBottom: 2,
   },
   statValue: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   safetyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   safetyTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#28A745',
+    fontWeight: "600",
+    color: "#28A745",
     marginLeft: 8,
   },
   safetyTips: {
-    backgroundColor: '#F8FFF8',
+    backgroundColor: "#F8FFF8",
     padding: 12,
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#28A745',
+    borderLeftColor: "#28A745",
   },
   safetyTip: {
     fontSize: 14,
-    color: '#155724',
+    color: "#155724",
     marginBottom: 4,
   },
   bottomSpacing: {
     height: 100,
   },
-  actionContainer: {
-    flexDirection: 'row',
+
+  actionButtonsContainer: {
+    flexDirection: "row",
     padding: 16,
-    backgroundColor: 'white',
+
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: "#E5E5E5",
   },
-  contactButton: {
+  primaryButton: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "white",
     borderWidth: 2,
-    borderColor: '#2A9D8F',
+    borderColor: "#2A9D8F",
     paddingVertical: 12,
     borderRadius: 8,
     marginRight: 8,
   },
-  contactButtonText: {
-    color: '#2A9D8F',
+
+  primaryButtonText: {
+    color: "#2A9D8F",
+
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 8,
   },
-  applyButton: {
-    flex: 2,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#2A9D8F',
+
+  secondaryButton: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#0ca678",
+
     paddingVertical: 12,
     borderRadius: 8,
     marginLeft: 8,
   },
-  applyButtonDisabled: {
-    backgroundColor: '#CCC',
-  },
-  applyButtonText: {
-    color: 'white',
+
+  secondaryButtonText: {
+    color: "#0ca678",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 8,
+  },
+  shareButton: {
+    padding: 8,
+  },
+  editButton: {
+    padding: 8,
+  },
+  errorButtonText: {
+    color: "#DC3545",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  posterSection: {
+    padding: 15,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 10,
+    marginHorizontal: 10,
+    marginTop: 10,
+  },
+  posterProfile: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    padding: 12,
+  },
+  posterImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  posterInfo: {
+    flex: 1,
+  },
+  posterName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  reviewStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: "#666",
+  },
+  viewProfileButton: {
+    backgroundColor: "#2A9D8F",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  viewProfileButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

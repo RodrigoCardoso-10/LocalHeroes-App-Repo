@@ -13,7 +13,7 @@ export default function AboutScreen() {
           local talent and making quality services accessible to everyone.
         </Text>
 
-        <Image source={require('../../assets/images/localheroes-logo.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../assets/images/localheroeslogo.png')} style={styles.logo} resizeMode="contain" />
 
         <Text style={styles.missionTitle}>Our Mission</Text>
         <Text style={styles.missionText}>

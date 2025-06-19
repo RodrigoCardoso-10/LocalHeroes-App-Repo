@@ -6,188 +6,147 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  TextInput,
   ScrollView,
   Image,
-  Alert,
   Platform,
-  ActionSheetIOS,
+  Alert,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from './context/AuthContext';
+import { useReviews } from './context/ReviewsContext';
 import { authService } from './services/api';
+import { User, Review } from './types/task';
 
-export default function EditProfileScreen() {
-  const { user, updateUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [profileData, setProfileData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    skills: [] as string[],
-    bio: '',
-    profilePicture: '',
-  }); // Load user data on mount
-  useEffect(() => {
-    if (user) {
-      setProfileData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        skills: user.skills || [],
-        bio: user.bio || '',
-        profilePicture: user.profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
-      });
-    }
-  }, [user]);
+export default function ProfileScreen() {
+  const { user } = useAuth();
+  const { id, email } = useLocalSearchParams();
+  const { reviews } = useReviews();
+  const [profileData, setProfileData] = useState<User>({});
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      if (Platform.OS !== 'web') {
-        // Request media library permissions
-        const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (mediaLibraryStatus !== 'granted') {
-          Alert.alert('Permission Needed', 'Media library permission is needed to select photos');
-        }
-
-        // Request camera permissions
-        const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-        if (cameraStatus !== 'granted') {
-          Alert.alert('Permission Needed', 'Camera permission is needed to take photos');
-        }
-      }
-    })();
-  }, []);
-
-  const [newSkill, setNewSkill] = useState('');
-
-  const handleInputChange = (field: string, value: string) => {
-    setProfileData({
-      ...profileData,
-      [field]: value,
-    });
-  };
-
-  const addSkill = () => {
-    if (newSkill.trim() !== '') {
-      setProfileData({
-        ...profileData,
-        skills: [...profileData.skills, newSkill.trim()],
-      });
-      setNewSkill('');
-    }
-  };
-
-  const removeSkill = (index: number) => {
-    const updatedSkills = [...profileData.skills];
-    updatedSkills.splice(index, 1);
-    setProfileData({
-      ...profileData,
-      skills: updatedSkills,
-    });
-  };
-  const takePhotoWithCamera = async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setProfileData({
-          ...profileData,
-          profilePicture: result.assets[0].uri,
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Log incoming parameters for debugging
+        console.log('Profile Screen - Fetch Parameters:', {
+          id: id,
+          email: email,
+          currentUser: {
+            id: (user as any)?._id,
+            email: (user as any)?.email
+          }
         });
-      }
-    } catch (error) {
-      console.log('Error taking photo:', error);
-      Alert.alert('Error', 'There was a problem taking the photo');
-    }
-  };
-  const pickImageFromGallery = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-      });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setProfileData({
-          ...profileData,
-          profilePicture: result.assets[0].uri,
-        });
-      }
-    } catch (error) {
-      console.log('Error picking image:', error);
-      Alert.alert('Error', 'There was a problem selecting the image');
-    }
-  };
+        // Determine the identifier to use
+        const identifier = (id || email) as string;
 
-  const showImageOptions = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Take Photo', 'Choose from Library'],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) {
-            takePhotoWithCamera();
-          } else if (buttonIndex === 2) {
-            pickImageFromGallery();
+        if (identifier) {
+          console.log('Attempting to fetch profile with identifier:', identifier);
+
+          try {
+            const fetchedProfile = await authService.getUserProfile(identifier);
+
+            console.log('Fetched Profile Details:', {
+              fetchedProfileId: fetchedProfile._id,
+              fetchedProfileEmail: fetchedProfile.email,
+              currentUserId: (user as any)?._id,
+              currentUserEmail: (user as any)?.email
+            });
+
+            // Set the profile data
+            setProfileData(fetchedProfile);
+
+            // Determine if this is the current user's profile
+            const isCurrentUserProfile = 
+              (fetchedProfile._id === (user as any)?._id) || 
+              (fetchedProfile.email === (user as any)?.email);
+
+            console.log('Is Own Profile Check:', {
+              idMatch: fetchedProfile._id === (user as any)?._id,
+              emailMatch: fetchedProfile.email === (user as any)?.email,
+              isCurrentUserProfile: isCurrentUserProfile
+            });
+
+            setIsOwnProfile(isCurrentUserProfile);
+          } catch (profileError) {
+            console.error('Profile Fetch Error:', profileError);
+            
+            // More informative error handling
+            Alert.alert(
+              'Profile Error', 
+              'Unable to retrieve the requested profile. Please try again.', 
+              [{ 
+                text: 'OK', 
+                onPress: () => router.back() 
+              }]
+            );
+          }
+        } else {
+          // If no identifier, show current user's profile
+          if (user) {
+            setProfileData({
+              _id: (user as any)._id || '',
+              firstName: (user as any).firstName || '',
+              lastName: (user as any).lastName || '',
+              email: (user as any).email || '',
+              phone: (user as any).phone || '',
+              address: (user as any).address || '',
+              skills: (user as any).skills || [],
+              bio: (user as any).bio || '',
+              profilePicture: (user as any).profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
+            });
+            setIsOwnProfile(true);
           }
         }
-      );
-    } else {
-      Alert.alert('Change Profile Picture', 'Choose an option', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Take Photo', onPress: takePhotoWithCamera },
-        { text: 'Choose from Library', onPress: pickImageFromGallery },
-      ]);
-    }
-  };
-  const handleSave = async () => {
-    if (!user) {
-      Alert.alert('Error', 'User not authenticated');
-      return;
-    }
+      } catch (error) {
+        console.error('Unexpected error in profile retrieval:', error);
+        
+        Alert.alert(
+          'Unexpected Error', 
+          'An unexpected error occurred while retrieving the profile.', 
+          [{ 
+            text: 'OK', 
+            onPress: () => router.back() 
+          }]
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    try {
-      setIsLoading(true);
+    fetchProfileData();
+  }, [id, email, user]);
 
-      // Update profile using auth context
-      await updateUser({
-        firstName: profileData.firstName,
-        lastName: profileData.lastName,
-        email: profileData.email,
-        phone: profileData.phone,
-        address: profileData.address,
-        bio: profileData.bio,
-        skills: profileData.skills,
-        profilePicture: profileData.profilePicture,
-      });
+  // Filter reviews for this specific profile
+  const userReviews = reviews.filter(review => 
+    (review as any).reviewedUserId && 
+    (profileData as any)._id && 
+    (review as any).reviewedUserId === (profileData as any)._id
+  );
 
-      Alert.alert('Profile Updated', 'Your profile has been successfully updated!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } catch (error: any) {
-      console.error('Profile update error:', error);
-      Alert.alert('Update Failed', error.message || 'Failed to update profile. Please try again.', [{ text: 'OK' }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0ca678" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -198,14 +157,14 @@ export default function EditProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={isLoading}>
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#0ca678" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        {isOwnProfile ? (
+          <TouchableOpacity onPress={() => router.push('/edit-profile' as any)} style={styles.editButton}>
+            <Ionicons name="create-outline" size={24} color="white" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
+        )}
       </View>
 
       <ScrollView style={styles.content}>
@@ -213,110 +172,118 @@ export default function EditProfileScreen() {
         <View style={styles.profilePictureContainer}>
           <Image
             source={{
-              uri: profileData.profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
+              uri: (profileData as any).profilePicture || 'https://randomuser.me/api/portraits/men/32.jpg',
             }}
             style={styles.profilePicture}
           />
-          <TouchableOpacity style={styles.editPictureButton} onPress={showImageOptions}>
-            <Ionicons name="camera" size={20} color="white" />
-          </TouchableOpacity>
+          <View style={styles.nameContainer}>
+            <Text style={styles.fullName}>{`${(profileData as any).firstName || ''} ${(profileData as any).lastName || ''}`}</Text>
+            <Text style={styles.emailText}>{(profileData as any).email || ''}</Text>
+          </View>
         </View>
-        {/* Form Fields */}
-        <View style={styles.formSection}>
+
+        {/* Personal Information */}
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>First Name</Text>
-            <TextInput
-              style={styles.input}
-              value={profileData.firstName}
-              onChangeText={(text) => handleInputChange('firstName', text)}
-              placeholder="Enter your first name"
-            />
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Phone</Text>
+            <Text style={styles.infoValue}>{(profileData as any).phone || 'Not provided'}</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Last Name</Text>
-            <TextInput
-              style={styles.input}
-              value={profileData.lastName}
-              onChangeText={(text) => handleInputChange('lastName', text)}
-              placeholder="Enter your last name"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={profileData.email}
-              onChangeText={(text) => handleInputChange('email', text)}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={profileData.phone}
-              onChangeText={(text) => handleInputChange('phone', text)}
-              placeholder="Enter your phone number"
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Address</Text>
-            <TextInput
-              style={styles.input}
-              value={profileData.address}
-              onChangeText={(text) => handleInputChange('address', text)}
-              placeholder="Enter your address"
-              multiline
-            />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Address</Text>
+            <Text style={styles.infoValue}>{(profileData as any).address || 'Not provided'}</Text>
           </View>
         </View>
+
         {/* Skills Section */}
-        <View style={styles.formSection}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skills</Text>
-
           <View style={styles.skillsContainer}>
-            {profileData.skills.map((skill, index) => (
-              <View key={index} style={styles.skillTag}>
-                <Text style={styles.skillText}>{skill}</Text>
-                <TouchableOpacity onPress={() => removeSkill(index)}>
-                  <Ionicons name="close-circle" size={16} color="#666" />
-                </TouchableOpacity>
-              </View>
-            ))}
+            {(profileData as any).skills && (profileData as any).skills.length > 0 ? (
+              (profileData as any).skills.map((skill: string, index: number) => (
+                <View key={index} style={styles.skillTag}>
+                  <Text style={styles.skillText}>{skill}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noContentText}>No skills added yet</Text>
+            )}
           </View>
+        </View>
 
-          <View style={styles.addSkillContainer}>
-            <TextInput
-              style={styles.skillInput}
-              value={newSkill}
-              onChangeText={setNewSkill}
-              placeholder="Add a new skill"
-            />
-            <TouchableOpacity style={styles.addButton} onPress={addSkill}>
-              <Ionicons name="add" size={24} color="white" />
+        {/* Bio Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Bio</Text>
+          <Text style={styles.bioText}>
+            {(profileData as any).bio || 'No bio provided yet'}
+          </Text>
+        </View>
+
+        {/* Reviews Section */}
+        <View style={styles.section}>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.sectionTitle}>Reviews</Text>
+            <View style={styles.reviewStats}>
+              <View style={styles.ratingContainer}>
+                {[...Array(5)].map((_, i) => (
+                  <Ionicons 
+                    key={i} 
+                    name={i < Math.round(userReviews.reduce((acc, review) => acc + ((review as any).rating || 0), 0) / (userReviews.length || 1)) ? "star" : "star-outline"} 
+                    size={16} 
+                    color="#FFD700" 
+                  />
+                ))}
+              </View>
+              <Text style={styles.reviewCount}>
+                {userReviews.length} {userReviews.length === 1 ? 'review' : 'reviews'}
+              </Text>
+            </View>
+          </View>
+          {userReviews.length > 0 ? (
+            userReviews.map((review: Review, index: number) => (
+              <View key={index} style={styles.reviewContainer}>
+                <Text style={styles.reviewerName}>
+                  {(review as any).reviewerName || 'Anonymous'}
+                </Text>
+                <Text style={styles.reviewText}>{(review as any).comment}</Text>
+                <View style={styles.ratingContainer}>
+                  {[...Array(5)].map((_, i) => (
+                    <Ionicons 
+                      key={i} 
+                      name={i < ((review as any).rating || 0) ? "star" : "star-outline"} 
+                      size={16} 
+                      color="#FFD700" 
+                    />
+                  ))}
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noContentText}>No reviews yet</Text>
+          )}
+          <View style={styles.reviewButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.reviewButton, styles.viewReviewsButton]}
+              onPress={() => router.push('/Reviews')}
+            >
+              <Text style={styles.viewReviewsText}>View All Reviews</Text>
+              <Ionicons name="arrow-forward" size={20} color="#0ca678" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.reviewButton, styles.writeReviewButton]}
+              onPress={() => router.push({
+                pathname: '/write-review',
+                params: { userId: profileData._id }
+              })}
+            >
+              <Text style={styles.writeReviewText}>Write a Review</Text>
+              <Ionicons name="create-outline" size={20} color="white" />
             </TouchableOpacity>
           </View>
         </View>
-        {/* Bio Section */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Bio</Text>
-          <TextInput
-            style={[styles.input, styles.bioInput]}
-            value={profileData.bio}
-            onChangeText={(text) => handleInputChange('bio', text)}
-            placeholder="Tell us about yourself and your experience"
-            multiline
-            numberOfLines={4}
-          />
-        </View>
+
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
@@ -326,61 +293,72 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#000',
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
-  backButton: {
-    padding: 4,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#000',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
-  saveButton: {
-    padding: 4,
+  backButton: {
+    padding: 8,
   },
-  saveButtonText: {
-    color: '#0ca678',
-    fontSize: 16,
-    fontWeight: 'bold',
+  editButton: {
+    padding: 8,
+  },
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
     padding: 16,
+    backgroundColor: '#f5f5f5',
   },
   profilePictureContainer: {
     alignItems: 'center',
     marginVertical: 20,
-    position: 'relative',
   },
   profilePicture: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     borderWidth: 3,
     borderColor: '#0ca678',
   },
-  editPictureButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: '35%',
-    backgroundColor: '#0ca678',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
+  nameContainer: {
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'white',
+    marginTop: 12,
   },
-  formSection: {
+  fullName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  emailText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 4,
+  },
+  section: {
     backgroundColor: 'white',
     borderRadius: 8,
     padding: 16,
@@ -392,39 +370,35 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
     color: '#333',
   },
-  inputContainer: {
-    marginBottom: 16,
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  inputLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  input: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 4,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  infoLabel: {
     fontSize: 16,
+    color: '#666',
+    flex: 1,
   },
-  bioInput: {
-    height: 100,
-    textAlignVertical: 'top',
+  infoValue: {
+    fontSize: 16,
+    color: '#333',
+    flex: 2,
+    textAlign: 'right',
   },
   skillsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
   },
   skillTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#e6f8f5',
     borderRadius: 16,
     paddingVertical: 6,
@@ -434,30 +408,82 @@ const styles = StyleSheet.create({
   },
   skillText: {
     color: '#0ca678',
-    marginRight: 4,
   },
-  addSkillContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  bioText: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 24,
   },
-  skillInput: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 4,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginRight: 8,
-  },
-  addButton: {
-    backgroundColor: '#0ca678',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  noContentText: {
+    color: '#666',
+    fontStyle: 'italic',
   },
   bottomSpace: {
     height: 40,
+  },
+  reviewContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  reviewerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  reviewText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reviewButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  reviewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    padding: 16,
+  },
+  viewReviewsButton: {
+    backgroundColor: '#f8f9fa',
+  },
+  writeReviewButton: {
+    backgroundColor: '#0ca678',
+  },
+  viewReviewsText: {
+    fontSize: 16,
+    color: '#0ca678',
+    fontWeight: '500',
+  },
+  writeReviewText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '500',
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  reviewStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: '#666',
   },
 });
