@@ -132,6 +132,14 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.placeholder} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0ca678" />
           <Text style={styles.loadingText}>Loading profile...</Text>
@@ -150,10 +158,12 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <TouchableOpacity onPress={() => router.push('/edit-profile' as any)} style={styles.editButton}>
-            <Ionicons name="create-outline" size={24} color="#0ca678" />
+            <Ionicons name="create-outline" size={24} color="white" />
           </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
         )}
       </View>
 
@@ -213,7 +223,24 @@ export default function ProfileScreen() {
 
         {/* Reviews Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.sectionTitle}>Reviews</Text>
+            <View style={styles.reviewStats}>
+              <View style={styles.ratingContainer}>
+                {[...Array(5)].map((_, i) => (
+                  <Ionicons 
+                    key={i} 
+                    name={i < Math.round(userReviews.reduce((acc, review) => acc + ((review as any).rating || 0), 0) / (userReviews.length || 1)) ? "star" : "star-outline"} 
+                    size={16} 
+                    color="#FFD700" 
+                  />
+                ))}
+              </View>
+              <Text style={styles.reviewCount}>
+                {userReviews.length} {userReviews.length === 1 ? 'review' : 'reviews'}
+              </Text>
+            </View>
+          </View>
           {userReviews.length > 0 ? (
             userReviews.map((review: Review, index: number) => (
               <View key={index} style={styles.reviewContainer}>
@@ -236,6 +263,25 @@ export default function ProfileScreen() {
           ) : (
             <Text style={styles.noContentText}>No reviews yet</Text>
           )}
+          <View style={styles.reviewButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.reviewButton, styles.viewReviewsButton]}
+              onPress={() => router.push('/Reviews')}
+            >
+              <Text style={styles.viewReviewsText}>View All Reviews</Text>
+              <Ionicons name="arrow-forward" size={20} color="#0ca678" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.reviewButton, styles.writeReviewButton]}
+              onPress={() => router.push({
+                pathname: '/write-review',
+                params: { userId: profileData._id }
+              })}
+            >
+              <Text style={styles.writeReviewText}>Write a Review</Text>
+              <Ionicons name="create-outline" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.bottomSpace} />
@@ -247,12 +293,13 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     marginTop: 10,
@@ -260,26 +307,31 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
-    backgroundColor: '#000',
-    padding: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  backButton: {
-    padding: 4,
+    justifyContent: 'space-between',
+    backgroundColor: '#000',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   headerTitle: {
-    color: 'white',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+    color: 'white',
+  },
+  backButton: {
+    padding: 8,
   },
   editButton: {
-    padding: 4,
+    padding: 8,
+  },
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
     padding: 16,
+    backgroundColor: '#f5f5f5',
   },
   profilePictureContainer: {
     alignItems: 'center',
@@ -389,5 +441,49 @@ const styles = StyleSheet.create({
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  reviewButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  reviewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    padding: 16,
+  },
+  viewReviewsButton: {
+    backgroundColor: '#f8f9fa',
+  },
+  writeReviewButton: {
+    backgroundColor: '#0ca678',
+  },
+  viewReviewsText: {
+    fontSize: 16,
+    color: '#0ca678',
+    fontWeight: '500',
+  },
+  writeReviewText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '500',
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  reviewStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reviewCount: {
+    fontSize: 14,
+    color: '#666',
   },
 });

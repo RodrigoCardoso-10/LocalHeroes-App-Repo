@@ -1,12 +1,37 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
-import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  Alert,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext'; // Adjusted path for AuthContext
+import { authService } from '../services/api';
 
 export default function SettingsScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Pull to refresh functionality
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      Alert.alert('Error', 'Failed to refresh balance. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshUser]);
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -26,6 +51,27 @@ export default function SettingsScreen() {
       },
     ]);
   };
+
+  const handleDeposit = async () => {
+    Alert.alert('Deposit Funds', 'Are you sure you want to deposit €10 to your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Deposit €10',
+        style: 'default',
+        onPress: async () => {
+          try {
+            await authService.deposit(10);
+            await refreshUser(); // Refresh to show updated balance
+            Alert.alert('Success', '€10 has been deposited to your account!');
+          } catch (error: any) {
+            console.error('Deposit error:', error);
+            Alert.alert('Error', error.message || 'Failed to deposit funds. Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   const menuItems = [
     {
       id: 'bank',
@@ -37,7 +83,7 @@ export default function SettingsScreen() {
     {
       id: 'privacy',
       title: 'Privacy & Security',
-      subtitle: 'Password, 2FA, Face verification',
+      subtitle: 'Change your Password',
       icon: <MaterialIcons name="privacy-tip" size={24} color="#0ca678" />,
       href: '/privacy',
     },
@@ -53,7 +99,7 @@ export default function SettingsScreen() {
       title: 'Payment Slips',
       subtitle: 'Transaction details and Evidence',
       icon: <MaterialCommunityIcons name="file-document-outline" size={24} color="#0ca678" />,
-      href: '/payment-slips',
+      href: '/Job-Payment',
     },
     {
       id: 'about',
@@ -67,20 +113,35 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <Header />
-      {/* Settings Items */}
-      <ScrollView 
+      <Header /> {/* Settings Items */}
+      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0ca678']} />}
       >
+        {/* Balance Section */}
+        <View style={styles.balanceContainer}>
+          <View style={styles.balanceHeader}>
+            <Text style={styles.balanceTitle}>Your Balance</Text>
+            <Ionicons name="wallet-outline" size={24} color="#0ca678" />
+          </View>
+          <Text style={styles.balanceAmount}>€{user?.balance?.toFixed(2) ?? '0.00'}</Text>
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity style={styles.depositButton} onPress={handleDeposit}>
+              <Text style={styles.depositButtonText}>Deposit €10</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.withdrawButton}
+              onPress={() => Alert.alert('Coming Soon', 'This feature is not yet available.')}
+            >
+              <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         {/* Menu Items */}
         {menuItems.map((item) => (
-          <TouchableOpacity 
-            style={styles.menuItem} 
-            key={item.id}
-            onPress={() => router.navigate(item.href as any)}
-          >
+          <TouchableOpacity style={styles.menuItem} key={item.id} onPress={() => router.navigate(item.href as any)}>
             <View style={styles.iconContainer}>{item.icon}</View>
             <View style={styles.menuItemText}>
               <Text style={styles.menuItemTitle}>{item.title}</Text>
@@ -246,5 +307,61 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 80,
+  },
+  balanceContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  balanceTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  balanceAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#0ca678',
+    marginBottom: 20,
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  depositButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    flex: 1,
+  },
+  depositButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  withdrawButton: {
+    backgroundColor: '#0ca678',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    flex: 1,
+  },
+  withdrawButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -2,12 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+interface LocationObject {
+  point?: any;
+  address?: string;
+  _id?: string;
+}
+
 interface JobCardProps {
   job: {
     _id: string;
     title: string;
     description: string;
-    location?: string;
+    location?: string | LocationObject;
     price: number;
     category?: string;
     tags?: string[];
@@ -21,6 +27,24 @@ interface JobCardProps {
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
+  // Helper for getting display address
+  const getLocationAddress = (
+    location: JobCardProps["job"]["location"]
+  ): string => {
+    if (!location) {
+      return "Unknown Location";
+    }
+    if (location.address) {
+      return location.address;
+    }
+    if (location.point?.coordinates) {
+      return `${location.point.coordinates[1].toFixed(
+        4
+      )}, ${location.point.coordinates[0].toFixed(4)}`;
+    }
+    return "Unknown Location";
+  };
+
   // Helper for status badge style
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
@@ -68,7 +92,16 @@ const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
         {job.location && (
           <View style={styles.metaItem}>
             <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.metaText}>{job.location}</Text>
+            <Text style={styles.metaText}>
+              {typeof job.location === "string"
+                ? job.location
+                : job.location &&
+                  typeof job.location === "object" &&
+                  "address" in job.location &&
+                  job.location.address
+                ? job.location.address
+                : "Unknown location"}
+            </Text>
           </View>
         )}
         {job.category && (

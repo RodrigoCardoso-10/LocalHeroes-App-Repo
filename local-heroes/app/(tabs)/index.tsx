@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -15,13 +16,14 @@ import JobCard from "../components/JobCard";
 import { Images } from "../constants/Images";
 import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/api";
-import { Task } from "../types/task";
+import { Task, TaskStatus } from "../types/task";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [recentJobs, setRecentJobs] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = async () => {
     try {
@@ -32,14 +34,38 @@ export default function HomeScreen() {
     }
   };
 
+  // Handle search functionality
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push({
+        pathname: "/(tabs)/jobs",
+        params: { search: searchQuery.trim() },
+      });
+    } else {
+      router.push("/(tabs)/jobs");
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+
   // Fetch recent jobs
   const loadRecentJobs = async () => {
     try {
       setLoading(true);
-      const response = await authService.getTasks({ page: 1, limit: 5 });
+      const response = await authService.getTasks({
+        page: 1,
+        limit: 5,
+        status: TaskStatus.OPEN,
+      });
+      console.log("Recent jobs API response:", response);
       setRecentJobs(response.tasks);
     } catch (error) {
       console.error("Failed to load recent jobs:", error);
+      if (error && (error as any).response) {
+        console.error("Error response:", (error as any).response.data);
+      }
     } finally {
       setLoading(false);
     }
@@ -49,99 +75,48 @@ export default function HomeScreen() {
     loadRecentJobs();
   }, []);
 
-  // Sample job data based on the Figma design (fallback)
-  const jobData = [
-    {
-      id: 1,
-      title: "Financial Security Analyst",
-      company: "Tech Solutions Inc.",
-      location: "New York",
-      type: "Full-time",
-      salary: "$70k - $90k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F0F8F7",
-    },
-    {
-      id: 2,
-      title: "Software Quality Facilitator",
-      company: "Innovate Corp.",
-      location: "Remote",
-      type: "Part-time",
-      salary: "$60k - $80k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F7F0F8",
-    },
-    {
-      id: 3,
-      title: "Internal Integration Planner",
-      company: "Global Ventures",
-      location: "San Francisco",
-      type: "Full-time",
-      salary: "$80k - $100k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F8F7F0",
-    },
-    {
-      id: 4,
-      title: "District Intranet Coordinator",
-      company: "City Connect",
-      location: "Chicago",
-      type: "Contract",
-      salary: "$40k - $60k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F0F8F7",
-    },
-    {
-      id: 5,
-      title: "Customer Service Facilitator",
-      company: "Service First",
-      location: "Austin",
-      type: "Full-time",
-      salary: "$50k - $70k",
-      logo: require("../../assets/images/dummy.jpg"),
-      color: "#F7F0F8",
-    },
-  ];
-
   return (
     <SafeAreaView style={styles.container}>
       <Header />
       <ScrollView style={styles.scrollView}>
         {/* Search Bar */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push("/(tabs)/jobs")}
-        >
+        <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchBar}
             placeholder="Search for jobs..."
-            editable={false}
-            pointerEvents="none"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
           />
-        </TouchableOpacity>
+          {searchQuery ? (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={clearSearch}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.searchIcon}
+              onPress={handleSearch}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="search" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {/* Job Categories */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categories}
-        >
-          <TouchableOpacity style={styles.category}>
-            <Text style={styles.categoryText}>Plumbing</Text>
-          </TouchableOpacity>
-          {/* Add more categories as needed */}
-        </ScrollView>
-        <ScrollView 
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.recentJobsHeader}>
             <Text style={styles.recentJobsTitle}>Recent Jobs Available</Text>
             <Text style={styles.recentJobsSubtitle}>
               {loading
                 ? "Loading..."
-                : `Showing ${recentJobs.length} recent jobs`}
+                : recentJobs.length > 0
+                ? `Showing ${recentJobs.length} recent jobs`
+                : "No recent jobs available"}
             </Text>
           </View>
 
@@ -162,31 +137,20 @@ export default function HomeScreen() {
                 />
               ))
             ) : (
-              jobData.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={{
-                    _id: job.id.toString(),
-                    title: job.title,
-                    description: job.company || "No description",
-                    location: job.location,
-                    price:
-                      typeof job.salary === "string"
-                        ? parseInt(job.salary.replace(/[^0-9]/g, "")) || 0
-                        : 0,
-                    category: job.type,
-                    tags: [],
-                    status: "OPEN",
-                    postedBy: { firstName: "Company", lastName: "" },
-                  }}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/jobs/[id]",
-                      params: { id: job.id },
-                    })
-                  }
-                />
-              ))
+              <View style={styles.noJobsContainer}>
+                <Text style={styles.noJobsText}>No recent jobs available</Text>
+                <Text style={styles.noJobsSubtext}>
+                  Check back later for new opportunities
+                </Text>
+                <TouchableOpacity
+                  style={styles.browseJobsButton}
+                  onPress={() => router.push("/(tabs)/jobs")}
+                >
+                  <Text style={styles.browseJobsButtonText}>
+                    Browse All Jobs
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -197,12 +161,9 @@ export default function HomeScreen() {
               style={styles.promoImage}
               resizeMode="cover"
             />
-            <Text style={styles.promoTitle}>
-              Your chance to help someone
-            </Text>
+            <Text style={styles.promoTitle}>Your chance to help someone</Text>
             <Text style={styles.promoDescription}>
-              Be the on that makes someone else's day by signing up 
-              for a job.
+              Be the one that makes someone else's day by signing up for a job.
             </Text>
             <TouchableOpacity
               style={styles.promoButton}
@@ -211,8 +172,6 @@ export default function HomeScreen() {
               <Text style={styles.promoButtonText}>Search Job</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.bottomSpace} />
         </ScrollView>
       </ScrollView>
     </SafeAreaView>
@@ -228,13 +187,38 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    position: "relative",
+  },
   searchBar: {
-    height: 40,
+    flex: 1,
+    height: 48,
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingRight: 45,
+    fontSize: 16,
+    backgroundColor: "#f9f9f9",
+  },
+  searchIcon: {
+    position: "absolute",
+    right: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 24,
+    height: 24,
+  },
+  clearButton: {
+    position: "absolute",
+    right: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 24,
+    height: 24,
   },
   categories: {
     flexDirection: "row",
@@ -295,26 +279,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  bottomSpace: {
-    height: 80,
+    paddingBottom: 24,
   },
   recentJobsHeader: {
-    marginBottom: 12,
+    marginBottom: 20,
+    alignItems: "center",
   },
   recentJobsTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#222",
+    textAlign: "center",
+    marginBottom: 8,
   },
   recentJobsSubtitle: {
     fontSize: 14,
     color: "#666",
+    textAlign: "center",
   },
   jobCardsContainer: {
     marginBottom: 24,
@@ -323,6 +304,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     textAlign: "center",
+  },
+  noJobsContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  noJobsText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  noJobsSubtext: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  browseJobsButton: {
+    backgroundColor: "#2BB6A3",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  browseJobsButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   jobNameContainer: {
     marginBottom: 8,
