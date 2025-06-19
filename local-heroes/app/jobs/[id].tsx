@@ -300,8 +300,7 @@ export default function JobDetailScreen() {
     setBookmarked(!bookmarked);
     // TODO: Implement bookmark API call
   };
-
-  const handleConfirmCompletion = async () => {
+  const handleCompleteAndPay = async () => {
     if (!job || !user) {
       return;
     }
@@ -309,42 +308,44 @@ export default function JobDetailScreen() {
     try {
       setConfirmingCompletion(true);
 
-      console.log('Confirming job completion:', {
+      console.log('Marking job as complete and processing payment:', {
         jobId: job._id,
         jobTitle: job.title,
         currentStatus: job.status,
-        userId: user.id,
+        price: job.price,
+        userId: user._id,
         userEmail: user.email,
       });
 
       Alert.alert(
-        'Confirm Job Completion',
-        'Are you sure you want to confirm that this job has been completed? This will transfer the funds to the worker.',
+        'Mark Job Complete & Pay',
+        `Are you sure you want to mark this job as completed? This will immediately transfer $${job.price} to the worker.`,
         [
           {
             text: 'Cancel',
             style: 'cancel',
           },
           {
-            text: 'Confirm & Pay',
+            text: 'Complete & Pay',
             style: 'default',
             onPress: async () => {
               try {
-                const updatedJob = await authService.confirmCompletion(job._id);
+                const updatedJob = await authService.completeTask(job._id);
                 setJob(updatedJob);
 
-                console.log('Job completion confirmed successfully:', {
+                console.log('Job completed and payment processed successfully:', {
                   jobId: updatedJob._id,
                   newStatus: updatedJob.status,
+                  paymentAmount: job.price,
                 });
 
                 Alert.alert(
-                  'Job Confirmed!',
-                  'The job has been marked as paid and funds have been transferred to the worker. Thank you for using LocalHeroes!',
+                  'Job Completed!',
+                  `The job has been marked as completed and $${job.price} has been transferred to the worker. Thank you for using LocalHeroes!`,
                   [{ text: 'OK' }]
                 );
               } catch (error: any) {
-                console.error('Error confirming completion:', {
+                console.error('Error completing job and processing payment:', {
                   errorType: error?.constructor?.name,
                   errorMessage: error?.message,
                   errorResponse: error?.response?.data,
@@ -353,7 +354,7 @@ export default function JobDetailScreen() {
                 });
 
                 const errorMessage =
-                  error?.response?.data?.message || error?.message || 'Failed to confirm job completion';
+                  error?.response?.data?.message || error?.message || 'Failed to complete job and process payment';
                 Alert.alert('Error', errorMessage);
               }
             },
@@ -361,7 +362,7 @@ export default function JobDetailScreen() {
         ]
       );
     } catch (error: any) {
-      console.error('Unexpected error in confirm completion:', error);
+      console.error('Unexpected error in job completion:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setConfirmingCompletion(false);
@@ -746,12 +747,12 @@ export default function JobDetailScreen() {
           </View>
         )}
       </ScrollView>{' '}
-      {/* Action Buttons */}
+      {/* Action Buttons */}{' '}
       <View style={styles.actionButtonsContainer}>
-        {isUserJob && job.status === TaskStatus.COMPLETED && (
+        {isUserJob && job.status === TaskStatus.IN_PROGRESS && (
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: '#28A745', borderColor: '#28A745' }]}
-            onPress={handleConfirmCompletion}
+            onPress={handleCompleteAndPay}
             disabled={confirmingCompletion}
           >
             {confirmingCompletion ? (
@@ -759,13 +760,13 @@ export default function JobDetailScreen() {
             ) : (
               <>
                 <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-                <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>Confirm & Pay</Text>
+                <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>Mark Complete & Pay</Text>
               </>
             )}
           </TouchableOpacity>
         )}
 
-        {isUserJob && job.status !== TaskStatus.COMPLETED && (
+        {isUserJob && job.status !== TaskStatus.IN_PROGRESS && (
           <View
             style={[
               styles.primaryButton,
