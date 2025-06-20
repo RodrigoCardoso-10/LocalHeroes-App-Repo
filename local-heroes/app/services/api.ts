@@ -515,6 +515,25 @@ export const authService = {
       }
     }
   },
+
+  // AI Support
+  sendAiMessage: async (message: string, context?: any) => {
+    try {
+      const response = await api.post('/ai-support/chat', { message, context });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to send AI message' };
+    }
+  },
+
+  getAiSuggestions: async () => {
+    try {
+      const response = await api.get('/ai-support/suggestions');
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: 'Failed to get AI suggestions' };
+    }
+  },
 };
 
 export default api;

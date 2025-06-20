@@ -10,11 +10,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 // Using buttons instead of Picker component to avoid potential compatibility issues
 import { useAuth } from './context/AuthContext';
+import AiChat from './components/AiChat';
 
 export default function CustomerSupportScreen() {
   return (
@@ -36,34 +38,40 @@ function CustomerSupportContent() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [expandedFaqId, setExpandedFaqId] = useState<number | null>(null);
-  
+  const [showAiChat, setShowAiChat] = useState(false);
+
   // FAQ data
   const faqItems = [
     {
       id: 1,
       question: 'How do I reset my password?',
-      answer: 'To reset your password, go to the login screen and tap on "Forgot Password". Enter your email address and follow the instructions sent to your email. You will receive a link to create a new password.'
+      answer:
+        'To reset your password, go to the login screen and tap on "Forgot Password". Enter your email address and follow the instructions sent to your email. You will receive a link to create a new password.',
     },
     {
       id: 2,
       question: 'How do I update my profile information?',
-      answer: 'You can update your profile information by navigating to the Profile tab, then tapping on the Edit Profile button. From there, you can modify your personal details, contact information, and profile picture.'
+      answer:
+        'You can update your profile information by navigating to the Profile tab, then tapping on the Edit Profile button. From there, you can modify your personal details, contact information, and profile picture.',
     },
     {
       id: 3,
       question: 'How do I cancel a job posting?',
-      answer: 'To cancel a job posting, go to the Jobs tab, select the specific job you want to cancel, and tap on the "Cancel Job" button. You will be asked to confirm the cancellation. Note that cancellations may be subject to our cancellation policy.'
+      answer:
+        'To cancel a job posting, go to the Jobs tab, select the specific job you want to cancel, and tap on the "Cancel Job" button. You will be asked to confirm the cancellation. Note that cancellations may be subject to our cancellation policy.',
     },
     {
       id: 4,
       question: 'How do I become a verified service provider?',
-      answer: 'To become a verified service provider, complete your profile with all required information, submit any necessary certifications or licenses, and request verification through the Profile section. Our team will review your submission and typically respond within 2-3 business days.'
+      answer:
+        'To become a verified service provider, complete your profile with all required information, submit any necessary certifications or licenses, and request verification through the Profile section. Our team will review your submission and typically respond within 2-3 business days.',
     },
     {
       id: 5,
       question: 'What payment methods are accepted?',
-      answer: 'We accept major credit and debit cards (Visa, MasterCard, American Express), PayPal, and bank transfers. All payments are securely processed and encrypted to ensure your financial information remains safe.'
-    }
+      answer:
+        'We accept major credit and debit cards (Visa, MasterCard, American Express), PayPal, and bank transfers. All payments are securely processed and encrypted to ensure your financial information remains safe.',
+    },
   ];
 
   // Email validation function
@@ -73,11 +81,12 @@ function CustomerSupportContent() {
   };
 
   // Form validation
-  const isFormValid = name.trim() !== '' && 
-    email.trim() !== '' && 
-    validateEmail(email) && 
-    category !== '' && 
-    subject.trim() !== '' && 
+  const isFormValid =
+    name.trim() !== '' &&
+    email.trim() !== '' &&
+    validateEmail(email) &&
+    category !== '' &&
+    subject.trim() !== '' &&
     message.trim() !== '';
 
   const handleSubmit = async () => {
@@ -111,7 +120,7 @@ function CustomerSupportContent() {
             },
           ]
         );
-        
+
         // Reset form
         setSubject('');
         setMessage('');
@@ -125,10 +134,7 @@ function CustomerSupportContent() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -172,46 +178,58 @@ function CustomerSupportContent() {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Category</Text>
                 <View style={styles.categoryContainer}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.categoryButton, category === 'general' && styles.categoryButtonActive]}
                     onPress={() => setCategory('general')}
                   >
-                    <Text style={[styles.categoryText, category === 'general' && styles.categoryTextActive]}>General Inquiry</Text>
+                    <Text style={[styles.categoryText, category === 'general' && styles.categoryTextActive]}>
+                      General Inquiry
+                    </Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[styles.categoryButton, category === 'technical' && styles.categoryButtonActive]}
                     onPress={() => setCategory('technical')}
                   >
-                    <Text style={[styles.categoryText, category === 'technical' && styles.categoryTextActive]}>Technical Support</Text>
+                    <Text style={[styles.categoryText, category === 'technical' && styles.categoryTextActive]}>
+                      Technical Support
+                    </Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[styles.categoryButton, category === 'billing' && styles.categoryButtonActive]}
                     onPress={() => setCategory('billing')}
                   >
-                    <Text style={[styles.categoryText, category === 'billing' && styles.categoryTextActive]}>Billing Issue</Text>
+                    <Text style={[styles.categoryText, category === 'billing' && styles.categoryTextActive]}>
+                      Billing Issue
+                    </Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[styles.categoryButton, category === 'account' && styles.categoryButtonActive]}
                     onPress={() => setCategory('account')}
                   >
-                    <Text style={[styles.categoryText, category === 'account' && styles.categoryTextActive]}>Account Problem</Text>
+                    <Text style={[styles.categoryText, category === 'account' && styles.categoryTextActive]}>
+                      Account Problem
+                    </Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[styles.categoryButton, category === 'feature' && styles.categoryButtonActive]}
                     onPress={() => setCategory('feature')}
                   >
-                    <Text style={[styles.categoryText, category === 'feature' && styles.categoryTextActive]}>Feature Request</Text>
+                    <Text style={[styles.categoryText, category === 'feature' && styles.categoryTextActive]}>
+                      Feature Request
+                    </Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[styles.categoryButton, category === 'bug' && styles.categoryButtonActive]}
                     onPress={() => setCategory('bug')}
                   >
-                    <Text style={[styles.categoryText, category === 'bug' && styles.categoryTextActive]}>Report a Bug</Text>
+                    <Text style={[styles.categoryText, category === 'bug' && styles.categoryTextActive]}>
+                      Report a Bug
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -244,13 +262,10 @@ function CustomerSupportContent() {
                 onPress={handleSubmit}
                 disabled={isSubmitting || !isFormValid}
               >
-                <Text style={styles.submitButtonText}>
-                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
-                </Text>
+                <Text style={styles.submitButtonText}>{isSubmitting ? 'Submitting...' : 'Submit Request'}</Text>
               </TouchableOpacity>
             </View>
           </View>
-
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Contact Us</Text>
 
@@ -280,20 +295,19 @@ function CustomerSupportContent() {
               </View>
             </View>
           </View>
-
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
             {faqItems.map((item) => (
               <View key={item.id} style={styles.faqItemContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.faqItem}
                   onPress={() => setExpandedFaqId(expandedFaqId === item.id ? null : item.id)}
                 >
                   <Text style={styles.faqQuestion}>{item.question}</Text>
-                  <Ionicons 
-                    name={expandedFaqId === item.id ? "chevron-down" : "chevron-forward"} 
-                    size={20} 
-                    color="#666" 
+                  <Ionicons
+                    name={expandedFaqId === item.id ? 'chevron-down' : 'chevron-forward'}
+                    size={20}
+                    color="#666"
                   />
                 </TouchableOpacity>
                 {expandedFaqId === item.id && (
@@ -303,8 +317,18 @@ function CustomerSupportContent() {
                 )}
               </View>
             ))}
-          </View>
+          </View>{' '}
         </ScrollView>
+
+        {/* AI Chat Floating Button */}
+        <TouchableOpacity style={styles.aiChatButton} onPress={() => setShowAiChat(true)}>
+          <Ionicons name="chatbubbles" size={24} color="#fff" />
+        </TouchableOpacity>
+
+        {/* AI Chat Modal */}
+        <Modal visible={showAiChat} animationType="slide" presentationStyle="pageSheet">
+          <AiChat onClose={() => setShowAiChat(false)} />
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -489,5 +513,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#555',
+  },
+  aiChatButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#0ca678',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });
